@@ -34,7 +34,7 @@
               {block name='product_flags'}
                 <ul class="product-flags">
                   {foreach from=$product.flags item=flag}
-                    <li class="product-flag">{$flag.label}</li>
+                    <li class="product-flag {$flag.type}">{$flag.label}</li>
                   {/foreach}
                 </ul>
               {/block}
@@ -42,6 +42,10 @@
               {block name='product_cover_tumbnails'}
                 {include file='catalog/_partials/product-cover-thumbnails.tpl'}
               {/block}
+              <div class="scroll-box-arrows">
+                <i class="material-icons left">&#xE314;</i>
+                <i class="material-icons right">&#xE315;</i>
+              </div>
 
             {/block}
           </section>
@@ -127,6 +131,11 @@
                   <a class="nav-link" data-toggle="tab" href="#attachments">{l s='Attachments' d='Shop.Theme.Catalog'}</a>
                 </li>
                 {/if}
+                {foreach from=$product.extraContent item=extra key=extraKey}
+                <li class="nav-item">
+                  <a class="nav-link" data-toggle="tab" href="#extra-{$extraKey}">{$extra.title}</a>
+                </li>
+                {/foreach}
               </ul>
 
               <div class="tab-content" id="tab-content">
@@ -146,10 +155,10 @@
                        <h3 class="h5 text-uppercase">{l s='Download' d='Shop.Theme.Actions'}</h3>
                        {foreach from=$product.attachments item=attachment}
                          <div class="attachment">
-                           <h4><a href="{$link->getPageLink('attachment', true, NULL, "id_attachment={$attachment.id_attachment}")}">{$attachment.name}</a></h4>
-                           <p>{$attachment.description}</p>
-                           <a href="{$link->getPageLink('attachment', true, NULL, "id_attachment={$attachment.id_attachment}")}">
-                             {l s='Download' d='Shop.Theme.Actions'} ({Tools::formatBytes($attachment.file_size, 2)})
+                           <h4><a href="{url entity='attachment' params=['id_attachment' => $attachment.id_attachment]}">{$attachment.name}</a></h4>
+                           <p>{$attachment.description}</p
+                           <a href="{url entity='attachment' params=['id_attachment' => $attachment.id_attachment]}">
+                             {l s='Download' d='Shop.Theme.Actions'} ({$attachment.file_size_formatted})
                            </a>
                          </div>
                        {/foreach}
@@ -157,6 +166,11 @@
                    </div>
                  {/if}
                {/block}
+               {foreach from=$product.extraContent item=extra key=extraKey}
+               <div class="tab-pane fade in {$extra.attr.class}" id="extra-{$extraKey}" {foreach $extra.attr as $key => $val} {$key}="{$val}"{/foreach}>
+                   {$extra.content nofilter}
+               </div>
+               {/foreach}
             </div>
           </div>
         </div>
@@ -167,11 +181,13 @@
       {if $accessories}
         <section class="product-accessories clearfix">
           <h3 class="h5 text-uppercase">{l s='You might also like' d='Shop.Theme.Catalog'}</h3>
-          {foreach from=$accessories item="product_accessory"}
-            {block name='product_miniature'}
-              {include file='catalog/_partials/miniatures/product.tpl' product=$product_accessory}
-            {/block}
-          {/foreach}
+          <div class="products">
+            {foreach from=$accessories item="product_accessory"}
+              {block name='product_miniature'}
+                {include file='catalog/_partials/miniatures/product.tpl' product=$product_accessory}
+              {/block}
+            {/foreach}
+          </div>
         </section>
       {/if}
     {/block}
@@ -180,42 +196,9 @@
       {hook h='displayFooterProduct' product=$product category=$category}
     {/block}
 
-    <div class="modal fade" id="product-modal">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-body">
-            {assign var=imagesCount value=$product.images|count}
-            <figure>
-              <img class="js-modal-product-cover product-cover-modal" width="{$product.cover.large.width}" src="{$product.cover.large.url}" alt="{$product.cover.legend}" title="{$product.cover.legend}" itemprop="image">
-              <figcaption class="image-caption">
-              {block name='product_description_short'}
-                <div id="product-description-short" itemprop="description">{$product.description_short nofilter}</div>
-              {/block}
-            </figcaption>
-            </figure>
-            <aside id="thumbnails" class="thumbnails js-thumbnails text-xs-center">
-              {block name='product_images'}
-                <div class="js-modal-mask mask {if $imagesCount <= 5} nomargin {/if}">
-                  <ul class="product-images js-modal-product-images">
-                    {foreach from=$product.images item=image}
-                      <li class="thumb-container">
-                        <img data-image-large-src="{$image.large.url}" class="thumb js-modal-thumb" src="{$image.medium.url}" alt="{$image.legend}" title="{$image.legend}" width="{$image.medium.width}" itemprop="image">
-                      </li>
-                    {/foreach}
-                  </ul>
-                </div>
-              {/block}
-              {if $imagesCount > 5}
-                <div class="arrows js-modal-arrows">
-                  <i class="material-icons arrow-up js-modal-arrow-up">&#xE5C7;</i>
-                  <i class="material-icons arrow-down js-modal-arrow-down">&#xE5C5;</i>
-                </div>
-              {/if}
-            </aside>
-          </div>
-        </div><!-- /.modal-content -->
-      </div><!-- /.modal-dialog -->
-    </div><!-- /.modal -->
+    {block name='product_images_modal'}
+      {include file='catalog/_partials/product-images-modal.tpl'}
+    {/block}
 
     {block name='page_footer_container'}
       <footer class="page-footer">

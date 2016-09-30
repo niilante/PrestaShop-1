@@ -276,10 +276,6 @@ class AdminRequestSqlControllerCore extends AdminController
 
     public function initContent()
     {
-        $this->initTabModuleList();
-        // toolbar (save, cancel, new, ..)
-        $this->initToolbar();
-        $this->initPageHeaderToolbar();
         if ($this->display == 'edit' || $this->display == 'add') {
             if (!$this->loadObject(true)) {
                 return;
@@ -301,10 +297,6 @@ class AdminRequestSqlControllerCore extends AdminController
 
         $this->context->smarty->assign(array(
             'content' => $this->content,
-            'url_post' => self::$currentIndex.'&token='.$this->token,
-            'show_page_header_toolbar' => $this->show_page_header_toolbar,
-            'page_header_toolbar_title' => $this->page_header_toolbar_title,
-            'page_header_toolbar_btn' => $this->page_header_toolbar_btn
         ));
     }
 
@@ -364,7 +356,7 @@ class AdminRequestSqlControllerCore extends AdminController
                         readfile($export_dir.$file);
                         die();
                     } else {
-                        $this->errors[] = $this->trans('The file is too large and can not be downloaded. Please use the LIMIT clause in this query.', array(), 'Admin.Parameters.Notification');
+                        $this->errors[] = $this->trans('The file is too large and cannot be downloaded. Please use the LIMIT clause in this query.', array(), 'Admin.AdvParameters.Notification');
                     }
                 }
             }
@@ -387,7 +379,7 @@ class AdminRequestSqlControllerCore extends AdminController
                             array(
                                 '%tablename%' => $e[$key]['table'],
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } elseif (isset($e[$key]['attribut'])) {
                         $this->errors[] = $this->trans(
@@ -396,7 +388,7 @@ class AdminRequestSqlControllerCore extends AdminController
                                     '%attribute%' => $e[$key]['attribut'][0],
                                     '%table%' => $e[$key]['attribut'][1],
                                 ),
-                                'Admin.Parameters.Notification'
+                                'Admin.AdvParameters.Notification'
                             );
                     } else {
                         $this->errors[] = Tools::displayError('Undefined "checkedFrom" error');
@@ -410,7 +402,7 @@ class AdminRequestSqlControllerCore extends AdminController
                             array(
                                 '%tablename%' => $e[$key]['table'],
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } elseif (isset($e[$key]['attribut'])) {
                         $this->errors[] = $this->trans(
@@ -419,10 +411,10 @@ class AdminRequestSqlControllerCore extends AdminController
                                 '%attribute%' => $e[$key]['attribut'][0],
                                 '%table%' => $e[$key]['attribut'][1],
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } elseif (isset($e[$key]['*'])) {
-                        $this->errors[] = $this->trans('The "*" operator cannot be used in a nested query.', array(), 'Admin.Parameters.Notification');
+                        $this->errors[] = $this->trans('The "*" operator cannot be used in a nested query.', array(), 'Admin.AdvParameters.Notification');
                     } else {
                         $this->errors[] = Tools::displayError('Undefined "checkedSelect" error');
                     }
@@ -435,7 +427,7 @@ class AdminRequestSqlControllerCore extends AdminController
                             array(
                                 '%operator%' => $e[$key]['operator'],
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } elseif (isset($e[$key]['attribut'])) {
                         $this->errors[] = $this->trans(
@@ -444,7 +436,7 @@ class AdminRequestSqlControllerCore extends AdminController
                                 '%attribute%' => $e[$key]['attribut'][0],
                                 '%table%' => $e[$key]['attribut'][1],
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } else {
                         $this->errors[] = Tools::displayError('Undefined "checkedWhere" error');
@@ -458,7 +450,7 @@ class AdminRequestSqlControllerCore extends AdminController
                             array(
                                 '%operator%' => $e[$key]['operator']
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } elseif (isset($e[$key]['attribut'])) {
                         $this->errors[] = $this->trans(
@@ -467,7 +459,7 @@ class AdminRequestSqlControllerCore extends AdminController
                                 '%attribute%' => $e[$key]['attribut'][0],
                                 '%table%' => $e[$key]['attribut'][1],
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } else {
                         $this->errors[] = Tools::displayError('Undefined "checkedHaving" error');
@@ -482,7 +474,7 @@ class AdminRequestSqlControllerCore extends AdminController
                                 '%attribute%' => $e[$key]['attribut'][0],
                                 '%table%' => $e[$key]['attribut'][1],
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } else {
                         $this->errors[] = Tools::displayError('Undefined "checkedOrder" error');
@@ -497,7 +489,7 @@ class AdminRequestSqlControllerCore extends AdminController
                                 '%attribute%' => $e[$key]['attribut'][0],
                                 '%table%' => $e[$key]['attribut'][1],
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } else {
                         $this->errors[] = Tools::displayError('Undefined "checkedGroupBy" error');
@@ -505,7 +497,7 @@ class AdminRequestSqlControllerCore extends AdminController
                 break;
 
                 case 'checkedLimit':
-                    $this->errors[] = $this->trans('The LIMIT clause must contain numeric arguments.', array(), 'Admin.Parameters.Notification');
+                    $this->errors[] = $this->trans('The LIMIT clause must contain numeric arguments.', array(), 'Admin.AdvParameters.Notification');
                 break;
 
                 case 'returnNameTable':
@@ -516,10 +508,10 @@ class AdminRequestSqlControllerCore extends AdminController
                                 '%reference%' => $e[$key]['reference'][0],
                                 '%table%' => $e[$key]['attribut'][1],
                             ),
-                            'Admin.Parameters.Notification'
+                            'Admin.AdvParameters.Notification'
                         );
                     } else {
-                        $this->errors[] = $this->trans('When multiple tables are used, each attribute must refer back to a table.', array(), 'Admin.Parameters.Notification');
+                        $this->errors[] = $this->trans('When multiple tables are used, each attribute must refer back to a table.', array(), 'Admin.AdvParameters.Notification');
                     }
                 break;
 
@@ -528,7 +520,7 @@ class AdminRequestSqlControllerCore extends AdminController
                 break;
 
                 case 'testedUnauthorized':
-                    $this->errors[] = sprintf($this->trans('Is an unauthorized keyword.', array(), 'Admin.Parameters.Notification'), $e[$key]);
+                    $this->errors[] = sprintf($this->trans('Is an unauthorized keyword.', array(), 'Admin.AdvParameters.Notification'), $e[$key]);
                 break;
             }
         }

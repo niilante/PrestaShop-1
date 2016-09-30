@@ -44,6 +44,9 @@ class ProductOptions extends CommonAbstractType
     private $productAdapter;
     private $router;
     private $locales;
+    private $currencyDataprovider;
+    private $fullAttachmentList;
+    private $attachmentList;
 
     /**
      * Constructor
@@ -73,7 +76,8 @@ class ProductOptions extends CommonAbstractType
         $this->fullAttachmentList = $attachmentDataprovider->getAllAttachments($this->context->getLanguages()[0]['id_lang']);
         $this->attachmentList = $this->formatDataChoicesList(
             $this->fullAttachmentList,
-            'id_attachment'
+            'id_attachment',
+            'file'
         );
     }
 
@@ -150,9 +154,9 @@ class ProductOptions extends CommonAbstractType
         ))
         ->add('condition', 'Symfony\Component\Form\Extension\Core\Type\ChoiceType', array(
             'choices'  => array(
-                 $this->translator->trans('New', [], 'Admin.Catalog.Feature') => 'new',
-                 $this->translator->trans('Used', [], 'Admin.Catalog.Feature') => 'used',
-                 $this->translator->trans('Refurbished', [], 'Admin.Catalog.Feature') => 'refurbished'
+                 $this->translator->trans('New', [], 'Shop.Theme.Catalog') => 'new',
+                 $this->translator->trans('Used', [], 'Shop.Theme.Catalog') => 'used',
+                 $this->translator->trans('Refurbished', [], 'Shop.Theme.Catalog') => 'refurbished'
             ),
             'choices_as_values' => true,
             'required' => true,
@@ -169,6 +173,8 @@ class ProductOptions extends CommonAbstractType
         ->add('default_supplier', 'Symfony\Component\Form\Extension\Core\Type\ChoiceType', array(
             'choices' =>  $this->suppliers,
             'choices_as_values' => true,
+            'expanded' =>  true,
+            'multiple' =>  false,
             'required' =>  true,
             'label' => $this->translator->trans('Default suppliers', [], 'Admin.Catalog.Feature')
         ));
@@ -207,6 +213,9 @@ class ProductOptions extends CommonAbstractType
             'multiple'  => true,
             'choices'  => $this->attachmentList,
             'choices_as_values' => true,
+            'choice_label' => function ($value, $key, $index) {
+                return $this->fullAttachmentList[$index - 1]['name'];
+            },
             'required' => false,
             'attr' => ['data' => $this->fullAttachmentList],
             'label' => $this->translator->trans('Attachments for this product:', [], 'Admin.Catalog.Feature')

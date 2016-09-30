@@ -227,6 +227,12 @@ class AdminCategoriesControllerCore extends AdminController
 
 
         $categories_tree = array_reverse($categories_tree);
+        if (!empty($categories_tree)) {
+            $link = Context::getContext()->link;
+            foreach ($categories_tree as $k => $tree) {
+                $categories_tree[$k]['edit_link'] = $link->getAdminLink('AdminCategories', true).'&id_category='.(int)$tree['id_category'].'&updatecategory';
+            }
+        }
 
         $this->tpl_list_vars['categories_tree'] = $categories_tree;
         $this->tpl_list_vars['categories_tree_current_id'] = $this->_category->id;
@@ -282,9 +288,12 @@ class AdminCategoriesControllerCore extends AdminController
                 );
             }
         }
+
         // be able to edit the Home category
         if (count(Category::getCategoriesWithoutParent()) == 1 && !Tools::isSubmit('id_category')
-            && ($this->display == 'view' || empty($this->display))) {
+            && ($this->display == 'view' || empty($this->display))
+            && !empty($this->_category)
+        ) {
             $this->toolbar_btn['edit'] = array(
                 'href' => self::$currentIndex.'&update'.$this->table.'&id_category='.(int)$this->_category->id.'&token='.$this->token,
                 'desc' => $this->trans('Edit', array(), 'Admin.Actions')
@@ -304,7 +313,8 @@ class AdminCategoriesControllerCore extends AdminController
             );
         }
         parent::initToolbar();
-        if ($this->_category->id == (int)Configuration::get('PS_ROOT_CATEGORY') && isset($this->toolbar_btn['new'])) {
+
+        if (!empty($this->_category) && $this->_category->id == (int)Configuration::get('PS_ROOT_CATEGORY') && isset($this->toolbar_btn['new'])) {
             unset($this->toolbar_btn['new']);
         }
         // after adding a category

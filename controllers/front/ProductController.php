@@ -25,6 +25,7 @@
  */
 use PrestaShop\PrestaShop\Adapter\Product\PriceFormatter;
 use PrestaShop\PrestaShop\Adapter\Image\ImageRetriever;
+use PrestaShop\PrestaShop\Core\Product\ProductExtraContentFinder;
 use PrestaShop\PrestaShop\Core\Product\ProductListingPresenter;
 use PrestaShop\PrestaShop\Adapter\Product\ProductColorsRetriever;
 use PrestaShop\PrestaShop\Core\Addon\Module\ModuleManagerBuilder;
@@ -340,6 +341,7 @@ class ProductControllerCore extends ProductPresentingFrontControllerCore
             'product_variants' => $this->render('catalog/_partials/product-variants'),
             'product_discounts' => $this->render('catalog/_partials/product-discounts'),
             'product_add_to_cart' => $this->render('catalog/_partials/product-add-to-cart'),
+            'product_images_modal' => $this->render('catalog/_partials/product-images-modal'),
             'product_url' => $this->context->link->getProductLink(
                 $product['id_product'],
                 null,
@@ -805,6 +807,8 @@ class ProductControllerCore extends ProductPresentingFrontControllerCore
     public function getTemplateVarProduct()
     {
         $productSettings = $this->getProductPresentationSettings();
+        // Hook displayProductExtraContent
+        $extraContentFinder = new ProductExtraContentFinder();
 
         $product = $this->objectPresenter->present($this->product);
         $product['id_product'] = (int) $this->product->id;
@@ -813,6 +817,7 @@ class ProductControllerCore extends ProductPresentingFrontControllerCore
         $product['id_product_attribute'] = (int) Tools::getValue('id_product_attribute');
         $product['minimal_quantity'] = $this->getProductMinimalQuantity($product);
         $product['quantity_wanted'] = $this->getRequiredQuantity($product);
+        $product['extraContent'] = $extraContentFinder->addParams(array('product' => $this->product))->present();
 
         $product_full = Product::getProductProperties($this->context->language->id, $product, $this->context);
 
@@ -913,7 +918,9 @@ class ProductControllerCore extends ProductPresentingFrontControllerCore
             }
         }
 
-        $breadcrumb['links'][] = $this->getCategoryPath($categoryDefault);
+        if (!$categoryDefault->is_root_category) {
+            $breadcrumb['links'][] = $this->getCategoryPath($categoryDefault);
+        }
 
         $breadcrumb['links'][] = array(
             'title' => $this->context->controller->product->name,

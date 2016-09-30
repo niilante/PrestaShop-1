@@ -44,15 +44,9 @@ class CustomerFormCore extends AbstractForm
 
     public function fillFromCustomer(Customer $customer)
     {
-        $birthday = $customer->birthday;
-        if ($birthday === '0000-00-00') {
-            // this is just because '0000-00-00' is not a valid
-            // value for an <input type="date">
-            $birthday = null;
-        }
-
         $params = get_object_vars($customer);
         $params['id_customer'] = $customer->id;
+        $params['birthday'] = $customer->birthday === '0000-00-00' ? null : Tools::displayDate($customer->birthday);
 
         return $this->fillWith($params);
     }
@@ -86,6 +80,20 @@ class CustomerFormCore extends AbstractForm
                 $emailField->getValue()
             ));
         }
+
+        // birthday is from input type text..., so we need to convert to a valid date
+        $birthdayField = $this->getField('birthday');
+        if (!empty($birthdayField)) {
+            $birthdayValue = $birthdayField->getValue();
+            if (!empty($birthdayValue)) {
+                $dateBuilt = DateTime::createFromFormat(Context::getContext()->language->date_format_lite, $birthdayValue);
+                if (!empty($dateBuilt)) {
+                    $birthdayField->setValue($dateBuilt->format('Y-m-d'));
+                }
+            }
+        }
+
+        $this->validateByModules();
 
         return parent::validate();
     }
@@ -128,5 +136,35 @@ class CustomerFormCore extends AbstractForm
                 $this->formFields
             ),
         ];
+    }
+
+    /**
+     * This function call the hook validateCustomerFormFields of every modules
+     * which added one or several fields to the customer registration form.
+     *
+     * Note: they won't get all the fields from the form, but only the one
+     * they added.
+     */
+    private function validateByModules()
+    {
+        $formFieldsAssociated = array();
+        // Group FormField instances by module name
+        foreach($this->formFields as $formField) {
+            if (!empty($formField->moduleName)) {
+                $formFieldsAssociated[$formField->moduleName][] = $formField;
+            }
+        }
+        // Because of security reasons (i.e password), we don't send all
+        // the values to the module but only the ones it created
+        foreach ($formFieldsAssociated as $moduleName => $formFields) {
+            if ($moduleId = Module::getModuleIdByName($moduleName)) {
+                // ToDo : replace Hook::exec with HookFinder, because we expect a specific class here
+                $validatedCustomerFormFields = Hook::exec('validateCustomerFormFields', array('fields' => $formFields), $moduleId, true);
+
+                if (is_array($validatedCustomerFormFields)) {
+                    array_merge($this->formFields, $validatedCustomerFormFields);
+                }
+            }
+        }
     }
 }

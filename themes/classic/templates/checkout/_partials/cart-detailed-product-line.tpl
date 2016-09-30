@@ -7,7 +7,7 @@
   </div>
 
   <!--  product left body: description -->
-  <div class="product-line-grid-body col-md-4 col-xs-5">
+  <div class="product-line-grid-body col-md-4 col-xs-8">
     <div class="product-line-info">
       <a class="label" href="{$product.url}">{$product.name}</a>
     </div>
@@ -29,37 +29,60 @@
     {/foreach}
 
     {if $product.customizations|count}
+      <br/>
       {foreach from=$product.customizations item="customization"}
-        {foreach from=$customization.fields item="field"}
-          <div class="product-line-info">
-            <span class="label">{$field.label}:</span>
-            <span class="value">
-              {if $field.type == 'text'}
-                {if (int)$field.id_module}
-                  {$field.text nofilter}
-                {else}
-                  {$field.text}
-                {/if}
-              {elseif $field.type == 'image'}
-                <img src="{$field.image.small.url}">
-              {/if}
-            </span>
+        <a href="#" data-toggle="modal" data-target="#product-customizations-modal-{$customization.id_customization}">{l s='Product customization' d='Shop.Theme.Catalog'}</a>
+        <div class="modal fade customization-modal" id="product-customizations-modal-{$customization.id_customization}" tabindex="-1" role="dialog" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">{l s='Product customization' d='Shop.Theme.Catalog'}</h4>
+              </div>
+              <div class="modal-body">
+                {foreach from=$customization.fields item="field"}
+                  <div class="product-customization-line row">
+                    <div class="col-sm-3 col-xs-4 label">
+                      {$field.label}
+                    </div>
+                    <div class="col-sm-9 col-xs-8 value">
+                      {if $field.type == 'text'}
+                        {if (int)$field.id_module}
+                          {$field.text nofilter}
+                        {else}
+                          {$field.text}
+                        {/if}
+                      {elseif $field.type == 'image'}
+                        <img src="{$field.image.small.url}">
+                      {/if}
+                    </div>
+                  </div>
+                {/foreach}
+              </div>
+            </div>
           </div>
-        {/foreach}
+        </div>
       {/foreach}
     {/if}
   </div>
 
   <!--  product left body: description -->
-  <div class="product-line-grid-right product-line-actions col-md-5 col-xs-3">
+  <div class="product-line-grid-right product-line-actions col-md-5 col-xs-12">
     <div class="row">
-      <div class="col-md-1 col-xs-12">
-        <input class="cart-line-product-quantity" data-down-url="{$product.down_quantity_url}" data-up-url="{$product.up_quantity_url}" data-update-url="{$product.update_quantity_url}" data-product-id="{$product.id_product}" type="text" value="{$product.quantity}" name="product-quantity-spin">
+      <div class="col-xs-4 hidden-md-up"></div>
+      <div class="col-md-10 col-xs-6">
+        <div class="row">
+          <div class="col-md-6 col-xs-6 qty">
+            <input class="js-cart-line-product-quantity" data-down-url="{$product.down_quantity_url}" data-up-url="{$product.up_quantity_url}" data-update-url="{$product.update_quantity_url}" data-product-id="{$product.id_product}" type="text" value="{$product.quantity}" name="product-quantity-spin">
+          </div>
+          <div class="col-md-6 col-xs-2 price">
+            <span class="product-price"><strong>{$product.total}</strong></span>
+          </div>
+        </div>
       </div>
-      <div class="col-md-5 col-md-offset-3 col-xs-12">
-        <span class="product-price"><strong>{$product.total}</strong></span>
-      </div>
-      <div class="col-md-1 col-xs-12">
+      <div class="col-md-2 col-xs-2 text-xs-right">
         <div class="cart-line-product-actions ">
           <a
               class                       = "remove-from-cart"

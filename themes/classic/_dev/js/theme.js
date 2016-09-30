@@ -22,6 +22,7 @@ import prestashop from 'prestashop';
 import EventEmitter from 'events';
 
 import './lib/bootstrap-filestyle.min';
+import './lib/jquery.scrollbox.min';
 
 import './components/block-cart';
 
@@ -43,4 +44,7 @@ $(document).ready(() => {
   topMenu.init();
   productMinitature.init();
   productSelect.init();
+  $("#search_filters_wrapper").bind("DOMSubtreeModified", function() {
+    productMinitature.init();
+  });
 });

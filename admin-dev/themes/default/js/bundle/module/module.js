@@ -161,7 +161,8 @@ var AdminModuleController = function() {
   };
 
   this.ajaxLoadPage = function() {
-    var urlToCall = this.baseAdminDir+'module/catalog/refresh';
+    var token = window.location.search;
+    var urlToCall = this.baseAdminDir+'module/catalog/refresh' + token;
     var self = this;
 
     $.ajax({
@@ -235,6 +236,7 @@ var AdminModuleController = function() {
           type: $this.attr('data-type'),
           price: parseFloat($this.attr('data-price')),
           active: parseInt($this.attr('data-active')),
+          access: $this.attr('data-last-access'),
           display: $this.hasClass('module-item-list') ? 'list' : 'grid',
           container: container
         });
@@ -247,8 +249,8 @@ var AdminModuleController = function() {
   this.updateModuleVisibility = function() {
     var self = this;
 
-    // Modules ordering
-    if (self.currentSorting !== null) {
+    if (self.currentSorting) {
+      // Modules sorting
       var order = 'asc';
       var key = self.currentSorting;
       if (key.split('-').length > 1) {
@@ -449,8 +451,8 @@ var AdminModuleController = function() {
 
     // Change the way Dropzone.js lib handle file input trigger
     body.on(
-        'click', '.dropzone:not('+this.moduleImportSelectFileManualSelector+', '+this.moduleImportSuccessConfigureBtnSelector+')',
-        function(event, manual_select) {
+      'click', '.dropzone:not('+this.moduleImportSelectFileManualSelector+', '+this.moduleImportSuccessConfigureBtnSelector+')',
+      function(event, manual_select) {
         // if click comes from .module-import-start-select-manual, stop everything
         if (typeof manual_select == "undefined") {
           event.stopPropagation();
@@ -626,6 +628,8 @@ var AdminModuleController = function() {
   this.initSortingDropdown = function () {
     var self = this;
 
+    self.currentSorting = $(this.moduleSortingDropdownSelector).find(':checked').attr('value');
+
     $('body').on('change', this.moduleSortingDropdownSelector, function() {
       self.currentSorting = $(this).find(':checked').attr('value');
       self.updateModuleVisibility();
@@ -750,21 +754,21 @@ var AdminModuleController = function() {
         );
       });
 
-    // If there is no shortlist: the wording directly update from the only module container.
+      // If there is no shortlist: the wording directly update from the only module container.
     } else {
       var modulesCount = $('.modules-list').find('.module-item').length;
       updateText(
-          $('.module-search-result-wording'),
-          modulesCount
+        $('.module-search-result-wording'),
+        modulesCount
       );
 
       $('.module-addons-search').toggle(modulesCount === 0);
       if (modulesCount === 0) {
         $('.module-addons-search-link').attr(
-            'href',
-            this.baseAddonsUrl
-              + 'search.php?search_query='
-              + encodeURIComponent(this.currentTagsList.join(' '))
+          'href',
+          this.baseAddonsUrl
+          + 'search.php?search_query='
+          + encodeURIComponent(this.currentTagsList.join(' '))
         );
       }
     }

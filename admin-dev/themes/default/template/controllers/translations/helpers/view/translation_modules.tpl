@@ -62,17 +62,18 @@
 				<input type="hidden" name="lang" value="{$lang}" />
 				<input type="hidden" name="type" value="{$type}" />
 				<input type="hidden" name="theme" value="{$theme}" />
+				<input type="hidden" name="module" value="{$module_name}" />
 				<div id="BoxUseSpecialSyntax">
 					<div class="alert alert-warning">
 						<p>
-							{l s='Some of these expressions use this special syntax: %s.' sprintf='%d'}
+							{l s='Some of these expressions use this special syntax: %s.' sprintf=['%d']}
 							<br />
 							{l s='You MUST use this syntax in your translations. Here are several examples:'}
 						</p>
 						<ul>
-							<li>"{l s='There are [1]%d[/1] products' tags=['<strong>']}": {l s='"%s" will be replaced by a number.' sprintf='%d'}</li>
-							<li>"{l s='List of pages in [1]%s[/1]' tags=['<strong>']}": {l s='"%s" will be replaced by a string.' sprintf='%s'}</li>
-							<li>"{l s='Feature: [1]%1$s[/1] ([1]%2$d[/1] values)' tags=['<strong>']}": {l s='The numbers enable you to reorder the variables when necessary.'}</li>
+							<li>"{l s='There are [1]%replace%[/1] products' html=true sprintf=['%replace%' => '%d', '[1]' => '<strong>', '[/1]' => '</strong>']}": {l s='"%s" will be replaced by a number.' sprintf=['%d']}</li>
+							<li>"{l s='List of pages in [1]%replace%[/1]' html=true sprintf=['%replace%' => '%s', '[1]' => '<strong>', '[/1]' => '</strong>']}": {l s='"%s" will be replaced by a string.' sprintf=['%s']}</li>
+							<li>"{l s='Feature: [1]%1%[/1] ([1]%2%[/1] values)' html=true sprintf=['%1%' => '%1$s', '%2%' => '%2$d', '[1]' => '<strong>', '[/1]' => '</strong>']}": {l s='The numbers enable you to reorder the variables when necessary.'}</li>
 						</ul>
 					</div>
 				</div>
@@ -95,9 +96,9 @@
 				</div>
 			</div>
 
-			{foreach $modules_translations as $theme_name => $theme}
+			{foreach $modules_translations as $theme_name => $selected_theme}
 				{if $theme_name}<h2>&gt;{l s='Theme:'} <a name="{$theme_name}">{$theme_name}</h2>{/if}
-				{foreach $theme as $module_name => $module}
+				{foreach $selected_theme as $module_name => $module}
 					<h2>{l s='Module:'} <a name="{$module_name}">{$module_name}</a></h2>
 					{foreach $module as $template_name => $newLang}
 						{if !empty($newLang)}
@@ -151,10 +152,43 @@
 									<button type="submit" id="{$table}_form_submit_btn" name="submitTranslations{$type|ucfirst}AndStay" class="btn btn-default pull-right"><i class="process-icon-save"></i> {l s='Save and stay' d='Admin.Actions'}</button>
 								</div>
 							</div>
+              </form>
 						{/if}
 					{/foreach}
 				{/foreach}
 			{/foreach}
 		{/if}
 
+    <form action="{$url_submit_installed_module|escape:'html':'UTF-8'}" method="post" enctype="multipart/form-data" class="form-horizontal">
+      <div class="panel">
+        <input type="hidden" name="langue" value="{$lang}" />
+        <input type="hidden" name="type" value="{$type}" />
+        <input type="hidden" name="theme" value="{$theme}" />
+        <input type="hidden" name="controller" value="AdminTranslations" />
+        <h3>
+          <i class="icon-file-text"></i>
+          {l s='Modify translations'}
+        </h3>
+        <p class="alert alert-info">
+          {l s='Here you can modify translations for all installed module.'}<br />
+        </p>
+        <div class="form-group">
+          <label class="control-label col-lg-3" for="translations-languages">{l s='Select your module'}</label>
+          <div class="col-lg-4">
+            <select name="module" id="installed_module">
+              <option value="">{l s='Module'}</option>
+              {foreach from=$installed_modules key=key item=module}
+                <option value="{$module}">{$module}</option>
+              {/foreach}
+            </select>
+          </div>
+          <input type="hidden" name="token" value="{$token|escape:'html':'UTF-8'}" />
+        </div>
+        <div class="panel-footer">
+          <button type="submit" class="btn btn-default pull-right" id="submitSelect{$type|ucfirst}" name="submitSelect{$type|ucfirst}">
+            <i class="process-icon-edit"></i> {l s='Modify translations'}
+          </button>
+        </div>
+      </div>
+    </form>
 {/block}

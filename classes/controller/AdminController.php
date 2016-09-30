@@ -172,6 +172,9 @@ class AdminControllerCore extends Controller
     /** @var array Cache for query results */
     protected $_list = array();
 
+    /** @var string MySQL error */
+    protected $_list_error;
+
     /** @var string|array Toolbar title */
     protected $toolbar_title;
 
@@ -659,6 +662,14 @@ class AdminControllerCore extends Controller
                         $filter_value = '';
                         if (isset($t['type']) && $t['type'] == 'bool') {
                             $filter_value = ((bool)$val) ? $this->l('yes') : $this->l('no');
+                        } elseif (isset($t['type']) && $t['type'] == 'date' || isset($t['type']) && $t['type'] == 'datetime') {
+                            $date = Tools::unSerialize($val);
+                            if (isset($date[0])) {
+                                $filter_value = $date[0];
+                                if (isset($date[1]) && !empty($date[1])) {
+                                    $filter_value .= ' - '.$date[1];
+                                }
+                            }
                         } elseif (is_string($val)) {
                             $filter_value = htmlspecialchars($val, ENT_QUOTES, 'UTF-8');
                         }
@@ -1308,7 +1319,7 @@ class AdminControllerCore extends Controller
             $list_id = isset($this->list_id) ? $this->list_id : $this->table;
         }
 
-        $prefix = str_replace(array('admin', 'controller'), '', Tools::strtolower(get_class($this)));
+        $prefix = $this->getCookieOrderByPrefix();
         $filters = $this->context->cookie->getFamily($prefix.$list_id.'Filter_');
         foreach ($filters as $cookie_key => $filter) {
             if (strncmp($cookie_key, $prefix.$list_id.'Filter_', 7 + Tools::strlen($prefix.$list_id)) == 0) {
@@ -1436,7 +1447,7 @@ class AdminControllerCore extends Controller
                                 if (Validate::isCleanHtml($val)) {
                                     $list[$language['id_lang']] = $val;
                                 } else {
-                                    $this->errors[] = Tools::displayError('Can not add configuration '.$key.' for lang '.Language::getIsoById((int)$language['id_lang']));
+                                    $this->errors[] = Tools::displayError('Cannot add configuration '.$key.' for lang '.Language::getIsoById((int)$language['id_lang']));
                                 }
                             }
                         }
@@ -1447,7 +1458,7 @@ class AdminControllerCore extends Controller
                             if (Validate::isCleanHtml($val)) {
                                 Configuration::updateValue($key, $val);
                             } else {
-                                $this->errors[] = Tools::displayError('Can not add configuration '.$key);
+                                $this->errors[] = Tools::displayError('Cannot add configuration '.$key);
                             }
                         }
                     }
@@ -1827,10 +1838,15 @@ class AdminControllerCore extends Controller
                             $admin_tab[1] = substr($admin_tab[1], 0, strpos($admin_tab[1], '&'));
                         }
 
-                        $token = Tools::getAdminToken($admin_tab[1].(int)Tab::getIdFromClassName($admin_tab[1]).(int)$this->context->employee->id);
+                        $token = Tools::getAdminToken($admin_tab[1] . (int)Tab::getIdFromClassName($admin_tab[1]) . (int)$this->context->employee->id);
                         $quick_access[$index]['target'] = $admin_tab[1];
-                        $quick_access[$index]['link'] .= '&token='.$token;
+                        $quick_access[$index]['link'] .= '&token=' . $token;
                     }
+                }
+
+                if (false === strpos($quick_access[$index]['link'], 'token')) {
+                    $separator = strpos($quick_access[$index]['link'], '?') ? '&' : '?';
+                    $quick_access[$index]['link'] .= $separator.'token=' . Tools::getAdminToken($this->context->employee->id);
                 }
             }
         }
@@ -1910,7 +1926,7 @@ class AdminControllerCore extends Controller
     {
         $tips = array(
             'order' => array(
-                $this->l('Your next order could be hidding there!'),
+                $this->l('Your next order could be hiding there!'),
                 $this->l('Did you check your conversion rate lately?'),
                 $this->l('How about some seasonal discounts?'),
             ),
@@ -1985,12 +2001,16 @@ class AdminControllerCore extends Controller
             $tabs[$index]['sub_tabs'] = array_values($this->getTabs($tab['id_tab'], $level + 1));
             if (isset($tabs[$index]['sub_tabs'][0])) {
                 $tabs[$index]['href'] = $tabs[$index]['sub_tabs'][0]['href'];
+            } elseif (0 == $tabs[$index]['id_parent'] && '' == $tabs[$index]['icon']) {
+                unset($tabs[$index]);
             }
 
-            foreach ($tabs[$index]['sub_tabs'] as $sub_tab) {
-                if ((int)$sub_tab['current'] == true) {
-                    $tabs[$index]['current'] = true;
-                    $tabs[$index]['current_level'] = $sub_tab['current_level'];
+            if (array_key_exists($index, $tabs) && array_key_exists('sub_tabs', $tabs[$index])) {
+                foreach ($tabs[$index]['sub_tabs'] as $sub_tab) {
+                    if ((int)$sub_tab['current'] == true) {
+                        $tabs[$index]['current'] = true;
+                        $tabs[$index]['current_level'] = $sub_tab['current_level'];
+                    }
                 }
             }
         }
@@ -2037,11 +2057,6 @@ class AdminControllerCore extends Controller
             return;
         }
 
-        $this->getLanguages();
-        $this->initToolbar();
-        $this->initTabModuleList();
-        $this->initPageHeaderToolbar();
-
         if ($this->display == 'edit' || $this->display == 'add') {
             if (!$this->loadObject(true)) {
                 return;
@@ -2072,9 +2087,20 @@ class AdminControllerCore extends Controller
         }
 
         $this->context->smarty->assign(array(
+            'content' => $this->content,
+        ));
+    }
+
+    public function initToolbarFlags() {
+        $this->getLanguages();
+
+        $this->initToolbar();
+        $this->initTabModuleList();
+        $this->initPageHeaderToolbar();
+
+        $this->context->smarty->assign(array(
             'maintenance_mode' => !(bool)Configuration::get('PS_SHOP_ENABLE'),
             'debug_mode' => (bool)_PS_MODE_DEV_,
-            'content' => $this->content,
             'lite_display' => $this->lite_display,
             'url_post' => self::$currentIndex.'&token='.$this->token,
             'show_page_header_toolbar' => $this->show_page_header_toolbar,
@@ -2084,7 +2110,6 @@ class AdminControllerCore extends Controller
             'page_header_toolbar_btn' => $this->page_header_toolbar_btn
         ));
     }
-
     /**
      * Init tab modules list and add button in toolbar
      */
@@ -2704,6 +2729,11 @@ class AdminControllerCore extends Controller
      */
     protected function l($string, $class = null, $addslashes = false, $htmlentities = true)
     {
+        $translated = $this->translator->trans($string);
+        if ($translated !== $string) {
+            return $translated;
+        }
+
         if ($class === null || $class == 'AdminTab') {
             $class = substr(get_class($this), 0, -10);
         } elseif (strtolower(substr($class, -10)) == 'controller') {
@@ -2804,6 +2834,20 @@ class AdminControllerCore extends Controller
         $this->initProcess();
         $this->initBreadcrumbs();
         $this->initModal();
+        $this->initToolbarFlags();
+        $this->initNotifications();
+    }
+
+    /**
+     * Sets the smarty variables used to show / hide some notifications
+     */
+    public function initNotifications()
+    {
+        $this->context->smarty->assign(array(
+            'show_new_orders' => Configuration::get('PS_SHOW_NEW_ORDERS'),
+            'show_new_customers' => Configuration::get('PS_SHOW_NEW_CUSTOMERS'),
+            'show_new_messages' => Configuration::get('PS_SHOW_NEW_MESSAGES '),
+        ));
     }
 
     /**
@@ -3060,7 +3104,14 @@ class AdminControllerCore extends Controller
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public function getList($id_lang, $order_by = null, $order_way = null, $start = 0, $limit = null, $id_lang_shop = false)
+    public function getList(
+        $id_lang,
+        $order_by = null,
+        $order_way = null,
+        $start = 0,
+        $limit = null,
+        $id_lang_shop = false
+    )
     {
         Hook::exec('action'.$this->controller_name.'ListingFieldsModifier', array(
             'select' => &$this->_select,
@@ -3076,69 +3127,25 @@ class AdminControllerCore extends Controller
             $this->list_id = $this->table;
         }
 
-        /* Manage default params values */
-        $use_limit = true;
-        if ($limit === false) {
-            $use_limit = false;
-        } elseif (empty($limit)) {
-            if (isset($this->context->cookie->{$this->list_id.'_pagination'}) && $this->context->cookie->{$this->list_id.'_pagination'}) {
-                $limit = $this->context->cookie->{$this->list_id.'_pagination'};
-            } else {
-                $limit = $this->_default_pagination;
-            }
-        }
-
         if (!Validate::isTableOrIdentifier($this->table)) {
             throw new PrestaShopException(sprintf('Table name %s is invalid:', $this->table));
         }
-        $prefix = str_replace(array('admin', 'controller'), '', Tools::strtolower(get_class($this)));
-        if (empty($order_by)) {
-            if ($this->context->cookie->{$prefix.$this->list_id.'Orderby'}) {
-                $order_by = $this->context->cookie->{$prefix.$this->list_id.'Orderby'};
-            } elseif ($this->_orderBy) {
-                $order_by = $this->_orderBy;
-            } else {
-                $order_by = $this->_defaultOrderBy;
-            }
-        }
-
-        if (empty($order_way)) {
-            if ($this->context->cookie->{$prefix.$this->list_id.'Orderway'}) {
-                $order_way = $this->context->cookie->{$prefix.$this->list_id.'Orderway'};
-            } elseif ($this->_orderWay) {
-                $order_way = $this->_orderWay;
-            } else {
-                $order_way = $this->_defaultOrderWay;
-            }
-        }
-
-        $limit = (int)Tools::getValue($this->list_id.'_pagination', $limit);
-        if (in_array($limit, $this->_pagination) && $limit != $this->_default_pagination) {
-            $this->context->cookie->{$this->list_id.'_pagination'} = $limit;
-        } else {
-            unset($this->context->cookie->{$this->list_id.'_pagination'});
-        }
 
         /* Check params validity */
-        if (!Validate::isOrderBy($order_by) || !Validate::isOrderWay($order_way)
-            || !is_numeric($start) || !is_numeric($limit)
-            || !Validate::isUnsignedId($id_lang)) {
+        if (!is_numeric($start) || !Validate::isUnsignedId($id_lang)) {
             throw new PrestaShopException('get list params is not valid');
         }
 
-        if (!isset($this->fields_list[$order_by]['order_key']) && isset($this->fields_list[$order_by]['filter_key'])) {
-            $this->fields_list[$order_by]['order_key'] = $this->fields_list[$order_by]['filter_key'];
-        }
-
-        if (isset($this->fields_list[$order_by]) && isset($this->fields_list[$order_by]['order_key'])) {
-            $order_by = $this->fields_list[$order_by]['order_key'];
-        }
+        $limit = $this->checkSqlLimit($limit);
 
         /* Determine offset from current page */
         $start = 0;
         if ((int)Tools::getValue('submitFilter'.$this->list_id)) {
             $start = ((int)Tools::getValue('submitFilter'.$this->list_id) - 1) * $limit;
-        } elseif (empty($start) && isset($this->context->cookie->{$this->list_id.'_start'}) && Tools::isSubmit('export'.$this->table)) {
+        } elseif (
+            empty($start) && isset($this->context->cookie->{$this->list_id.'_start'}) &&
+            Tools::isSubmit('export'.$this->table)
+        ) {
             $start = $this->context->cookie->{$this->list_id.'_start'};
         }
 
@@ -3151,27 +3158,11 @@ class AdminControllerCore extends Controller
 
         /* Cache */
         $this->_lang = (int)$id_lang;
-        $this->_orderBy = $order_by;
-
-        if (preg_match('/[.!]/', $order_by)) {
-            $order_by_split = preg_split('/[.!]/', $order_by);
-            $order_by = bqSQL($order_by_split[0]).'.`'.bqSQL($order_by_split[1]).'`';
-        } elseif ($order_by) {
-            $order_by = '`'.bqSQL($order_by).'`';
-        }
-
-        $this->_orderWay = Tools::strtoupper($order_way);
-
-        /* SQL table : orders, but class name is Order */
-        $sql_table = $this->table == 'order' ? 'orders' : $this->table;
 
         // Add SQL shop restriction
-        $select_shop = $join_shop = $where_shop = '';
+        $select_shop = '';
         if ($this->shopLinkType) {
             $select_shop = ', shop.name as shop_name ';
-            $join_shop = ' LEFT JOIN '._DB_PREFIX_.$this->shopLinkType.' shop
-                            ON a.id_'.$this->shopLinkType.' = shop.id_'.$this->shopLinkType;
-            $where_shop = Shop::addSqlRestriction($this->shopShareDatas, 'a', $this->shopLinkType);
         }
 
         if ($this->multishop_context && Shop::isTableAssociated($this->table) && !empty($this->className)) {
@@ -3181,38 +3172,19 @@ class AdminControllerCore extends Controller
                     $this->_where .= ' AND EXISTS (
                         SELECT 1
                         FROM `'._DB_PREFIX_.$this->table.'_shop` sa
-                        WHERE a.'.$this->identifier.' = sa.'.$this->identifier.' AND sa.id_shop IN ('.implode(', ', Shop::getContextListShopID()).')
+                        WHERE a.'.$this->identifier.' = sa.'.$this->identifier.
+                        ' AND sa.id_shop IN ('.implode(', ', Shop::getContextListShopID()).')
                     )';
                 }
             }
         }
 
-        /* Query in order to get results with all fields */
-        $lang_join = '';
-        if ($this->lang) {
-            $lang_join = 'LEFT JOIN `'._DB_PREFIX_.$this->table.'_lang` b ON (b.`'.$this->identifier.'` = a.`'.$this->identifier.'` AND b.`id_lang` = '.(int)$id_lang;
-            if ($id_lang_shop) {
-                if (!Shop::isFeatureActive()) {
-                    $lang_join .= ' AND b.`id_shop` = '.(int)Configuration::get('PS_SHOP_DEFAULT');
-                } elseif (Shop::getContext() == Shop::CONTEXT_SHOP) {
-                    $lang_join .= ' AND b.`id_shop` = '.(int)$id_lang_shop;
-                } else {
-                    $lang_join .= ' AND b.`id_shop` = a.id_shop_default';
-                }
-            }
-            $lang_join .= ')';
-        }
+        $fromClause = $this->getFromClause();
+        $joinClause = $this->getJoinClause($id_lang, $id_lang_shop);
+        $whereClause = $this->getWhereClause();
+        $orderByClause = $this->getOrderByClause($order_by, $order_way);
 
-        $having_clause = '';
-        if (isset($this->_filterHaving) || isset($this->_having)) {
-            $having_clause = ' HAVING ';
-            if (isset($this->_filterHaving)) {
-                $having_clause .= ltrim($this->_filterHaving, ' AND ');
-            }
-            if (isset($this->_having)) {
-                $having_clause .= $this->_having.' ';
-            }
-        }
+        $shouldLimitSqlResults = $this->shouldLimitSqlResults($limit);
 
         do {
             $this->_listsql = '';
@@ -3237,33 +3209,33 @@ class AdminControllerCore extends Controller
                 $this->_listsql .= ($this->lang ? 'b.*,' : '').' a.*';
             }
 
-            $this->_listsql .= '
-            '.(isset($this->_select) ? ', '.rtrim($this->_select, ', ') : '').$select_shop;
+            $this->_listsql .= "\n".(isset($this->_select) ? ', '.rtrim($this->_select, ', ') : '').$select_shop;
 
-            $sql_from = '
-            FROM `'._DB_PREFIX_.$sql_table.'` a ';
-            $sql_join = '
-            '.$lang_join.'
-            '.(isset($this->_join) ? $this->_join.' ' : '').'
-            '.$join_shop;
-            $sql_where = ' '.(isset($this->_where) ? $this->_where.' ' : '').($this->deleted ? 'AND a.`deleted` = 0 ' : '').
-            (isset($this->_filter) ? $this->_filter : '').$where_shop.'
-            '.(isset($this->_group) ? $this->_group.' ' : '').'
-            '.$having_clause;
-            $sql_order_by = ' ORDER BY '.((str_replace('`', '', $order_by) == $this->identifier) ? 'a.' : '').$order_by.' '.pSQL($order_way).
-            ($this->_tmpTableFilter ? ') tmpTable WHERE 1'.$this->_tmpTableFilter : '');
-            $sql_limit = ' '.(($use_limit === true) ? ' LIMIT '.(int)$start.', '.(int)$limit : '');
+            $limitClause = ' '.(($shouldLimitSqlResults) ? ' LIMIT '.(int)$start.', '.(int)$limit : '');
 
             if ($this->_use_found_rows || isset($this->_filterHaving) || isset($this->_having)) {
-                $this->_listsql = 'SELECT SQL_CALC_FOUND_ROWS
-                                '.($this->_tmpTableFilter ? ' * FROM (SELECT ' : '').$this->_listsql.$sql_from.$sql_join.' WHERE 1 '.$sql_where.
-                                $sql_order_by.$sql_limit;
+                $this->_listsql = 'SELECT SQL_CALC_FOUND_ROWS '.($this->_tmpTableFilter ? ' * FROM (SELECT ' : '').
+                    $this->_listsql.
+                    $fromClause.
+                    $joinClause.
+                    $whereClause.
+                    $orderByClause.
+                    $limitClause;
+
                 $list_count = 'SELECT FOUND_ROWS() AS `'._DB_PREFIX_.$this->table.'`';
             } else {
-                $this->_listsql = 'SELECT
-                                '.($this->_tmpTableFilter ? ' * FROM (SELECT ' : '').$this->_listsql.$sql_from.$sql_join.' WHERE 1 '.$sql_where.
-                                $sql_order_by.$sql_limit;
-                $list_count = 'SELECT COUNT(*) AS `'._DB_PREFIX_.$this->table.'` '.$sql_from.$sql_join.' WHERE 1 '.$sql_where;
+                $this->_listsql = 'SELECT '.($this->_tmpTableFilter ? ' * FROM (SELECT ' : '').
+                    $this->_listsql.
+                    $fromClause.
+                    $joinClause.
+                    $whereClause.
+                    $orderByClause.
+                    $limitClause;
+
+                $list_count = 'SELECT COUNT(*) AS `'._DB_PREFIX_.$this->table.'` '.
+                    $fromClause.
+                    $joinClause.
+                    $whereClause;
             }
 
             $this->_list = Db::getInstance()->executeS($this->_listsql, true, false);
@@ -3275,7 +3247,7 @@ class AdminControllerCore extends Controller
 
             $this->_listTotal = Db::getInstance()->getValue($list_count, false);
 
-            if ($use_limit === true) {
+            if ($shouldLimitSqlResults) {
                 $start = (int)$start - (int)$limit;
                 if ($start < 0) {
                     break;
@@ -3289,6 +3261,226 @@ class AdminControllerCore extends Controller
             'list' => &$this->_list,
             'list_total' => &$this->_listTotal,
         ));
+    }
+
+    /**
+     * @return string
+     */
+    protected function getFromClause()
+    {
+        $sql_table = $this->table == 'order' ? 'orders' : $this->table;
+
+        return "\n".'FROM `'._DB_PREFIX_.$sql_table.'` a ';
+    }
+
+    /**
+     * @param $id_lang
+     * @param $id_lang_shop
+     * @return string
+     */
+    protected function getJoinClause($id_lang, $id_lang_shop)
+    {
+        $shopJoinClause = '';
+        if ($this->shopLinkType) {
+            $shopJoinClause = ' LEFT JOIN '._DB_PREFIX_.$this->shopLinkType.' shop
+                            ON a.id_'.$this->shopLinkType.' = shop.id_'.$this->shopLinkType;
+        }
+
+        return "\n".$this->getLanguageJoinClause($id_lang, $id_lang_shop).
+            "\n".(isset($this->_join) ? $this->_join . ' ' : '').
+            "\n".$shopJoinClause;
+    }
+
+    /**
+     * @param $idLang
+     * @param $idLangShop
+     * @return string
+     */
+    protected function getLanguageJoinClause($idLang, $idLangShop)
+    {
+        $languageJoinClause = '';
+        if ($this->lang) {
+            $languageJoinClause = 'LEFT JOIN `' . _DB_PREFIX_ . $this->table . '_lang` b ON (b.`' .
+                $this->identifier . '` = a.`' . $this->identifier . '` AND b.`id_lang` = ' . (int)$idLang;
+
+            if ($idLangShop) {
+                if (!Shop::isFeatureActive()) {
+                    $languageJoinClause .= ' AND b.`id_shop` = ' . (int)Configuration::get('PS_SHOP_DEFAULT');
+                } elseif (Shop::getContext() == Shop::CONTEXT_SHOP) {
+                    $languageJoinClause .= ' AND b.`id_shop` = ' . (int)$idLangShop;
+                } else {
+                    $languageJoinClause .= ' AND b.`id_shop` = a.id_shop_default';
+                }
+            }
+            $languageJoinClause .= ')';
+        }
+
+        return $languageJoinClause;
+    }
+
+    /**
+     * @return string
+     */
+    protected function getWhereClause()
+    {
+        $whereShop = '';
+        if ($this->shopLinkType) {
+            $whereShop = Shop::addSqlRestriction($this->shopShareDatas, 'a', $this->shopLinkType);
+        }
+        $whereClause = ' WHERE 1 ' . (isset($this->_where) ? $this->_where . ' ' : '') .
+            ($this->deleted ? 'AND a.`deleted` = 0 ' : '') .
+            (isset($this->_filter) ? $this->_filter : '') . $whereShop . "\n" .
+            (isset($this->_group) ? $this->_group . ' ' : '') . "\n" .
+            $this->getHavingClause();
+
+        return $whereClause;
+    }
+
+    /**
+     * @param $orderBy
+     * @param $orderDirection
+     * @return string
+     */
+    protected function getOrderByClause($orderBy, $orderDirection)
+    {
+        $this->_orderBy = $this->checkOrderBy($orderBy);
+        $this->_orderWay = $this->checkOrderDirection($orderDirection);
+
+        return ' ORDER BY ' . ((str_replace('`', '', $this->_orderBy) == $this->identifier) ? 'a.' : '') .
+            $this->_orderBy . ' ' . $this->_orderWay .
+            ($this->_tmpTableFilter ? ') tmpTable WHERE 1' . $this->_tmpTableFilter : '');
+    }
+
+    /**
+     * @param $orderBy
+     * @return false|string
+     */
+    protected function checkOrderBy($orderBy)
+    {
+        if (empty($orderBy)) {
+            $prefix = $this->getCookieFilterPrefix();
+
+            if ($this->context->cookie->{$prefix . $this->list_id . 'Orderby'}) {
+                $orderBy = $this->context->cookie->{$prefix . $this->list_id . 'Orderby'};
+            } elseif ($this->_orderBy) {
+                $orderBy = $this->_orderBy;
+            } else {
+                $orderBy = $this->_defaultOrderBy;
+            }
+        }
+
+        /* Check params validity */
+        if (!Validate::isOrderBy($orderBy)) {
+            throw new PrestaShopException('Invalid "order by" clause.');
+        }
+
+        if (!isset($this->fields_list[$orderBy]['order_key']) && isset($this->fields_list[$orderBy]['filter_key'])) {
+            $this->fields_list[$orderBy]['order_key'] = $this->fields_list[$orderBy]['filter_key'];
+        }
+
+        if (isset($this->fields_list[$orderBy]) && isset($this->fields_list[$orderBy]['order_key'])) {
+            $orderBy = $this->fields_list[$orderBy]['order_key'];
+        }
+
+        if (preg_match('/[.!]/', $orderBy)) {
+            $orderBySplit = preg_split('/[.!]/', $orderBy);
+            $orderBy = bqSQL($orderBySplit[0]) . '.`' . bqSQL($orderBySplit[1]) . '`';
+        } elseif ($orderBy) {
+            $orderBy = bqSQL($orderBy);
+        }
+
+        return $orderBy;
+    }
+
+    /**
+     * @param $orderDirection
+     * @return string
+     */
+    protected function checkOrderDirection($orderDirection)
+    {
+        $prefix = $this->getCookieOrderByPrefix();
+        if (empty($orderDirection)) {
+            if ($this->context->cookie->{$prefix . $this->list_id . 'Orderway'}) {
+                $orderDirection = $this->context->cookie->{$prefix . $this->list_id . 'Orderway'};
+            } elseif ($this->_orderWay) {
+                $orderDirection = $this->_orderWay;
+            } else {
+                $orderDirection = $this->_defaultOrderWay;
+            }
+        }
+
+        if (!Validate::isOrderWay($orderDirection)) {
+            throw new PrestaShopException('Invalid order direction.');
+        }
+
+        return pSQL(Tools::strtoupper($orderDirection));
+    }
+
+    /**
+     * @return mixed
+     */
+    protected function getCookieOrderByPrefix()
+    {
+        return str_replace(array('admin', 'controller'), '', Tools::strtolower(get_class($this)));
+    }
+
+    /**
+     * @return string
+     */
+    protected function getHavingClause()
+    {
+        $havingClause = '';
+        if (isset($this->_filterHaving) || isset($this->_having)) {
+            $havingClause = ' HAVING ';
+            if (isset($this->_filterHaving)) {
+                $havingClause .= ltrim($this->_filterHaving, ' AND ');
+            }
+            if (isset($this->_having)) {
+                $havingClause .= $this->_having . ' ';
+            }
+        }
+
+        return $havingClause;
+    }
+
+    /**
+     * @param $limit
+     * @return bool
+     */
+    protected function shouldLimitSqlResults($limit)
+    {
+        return $limit !== false;
+    }
+
+    /**
+     * @param $limit
+     * @return int
+     */
+    protected function checkSqlLimit($limit)
+    {
+        if (empty($limit)) {
+            if (
+                isset($this->context->cookie->{$this->list_id . '_pagination'}) &&
+                $this->context->cookie->{$this->list_id . '_pagination'}
+            ) {
+                $limit = $this->context->cookie->{$this->list_id . '_pagination'};
+            } else {
+                $limit = $this->_default_pagination;
+            }
+        }
+
+        $limit = (int)Tools::getValue($this->list_id.'_pagination', $limit);
+        if (in_array($limit, $this->_pagination) && $limit != $this->_default_pagination) {
+            $this->context->cookie->{$this->list_id.'_pagination'} = $limit;
+        } else {
+            unset($this->context->cookie->{$this->list_id.'_pagination'});
+        }
+
+        if (!is_numeric($limit)) {
+            throw new PrestaShopException('Invalid limit. It should be a numeric.');
+        }
+
+        return $limit;
     }
 
     /**
@@ -3593,9 +3785,9 @@ class AdminControllerCore extends Controller
                 if ($key == 'passwd' && Tools::getValue('id_'.$table) && empty($value)) {
                     continue;
                 }
-                /* Automatically encrypt password in MD5 */
+                /* Automatically hash password in MD5 */
                 if ($key == 'passwd' && !empty($value)) {
-                    $value = Tools::encrypt($value);
+                    $value = Tools::hash($value);
                 }
                 $object->{$key} = $value;
             }
@@ -4098,10 +4290,6 @@ class AdminControllerCore extends Controller
 
         if ((Tools::getValue('module_name') == $module->name || in_array($module->name, explode('|', Tools::getValue('modules_list')))) && (int)Tools::getValue('conf') > 0) {
             unset($obj);
-        }
-
-        if (!empty($module->image) && false !== strpos($module->image, '../img')) {
-            $module->image_absolute = str_replace('../', _PS_BASE_URL_.__PS_BASE_URI__, $module->image);
         }
     }
 

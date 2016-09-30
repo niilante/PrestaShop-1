@@ -1,5 +1,4 @@
 imports:
-    - { resource: parameters.yml }
     - { resource: set_parameters.php }
     - { resource: security.yml }
     - { resource: services.yml }
@@ -84,6 +83,9 @@ doctrine:
         # naming_strategy: doctrine.orm.naming_strategy.underscore
         naming_strategy: prestashop.database.naming_strategy
         auto_mapping: true
+        dql:
+            string_functions:
+                regexp: DoctrineExtensions\Query\Mysql\Regexp
 
 # Swiftmailer Configuration
 swiftmailer:
@@ -104,3 +106,8 @@ csa_guzzle:
                 timeout: "5.0"
                 headers:
                     Accept: "application/json"
+
+prestashop:
+    addons:
+        api_client:
+            verify_ssl: ~ # true by default, declaring "addons.api_client.verify_ssl" parameter overrides its usage

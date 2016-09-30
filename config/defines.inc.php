@@ -94,10 +94,10 @@ define('_PS_FRONT_CONTROLLER_DIR_', _PS_CORE_DIR_.'/controllers/front/');
 
 define('_PS_TOOL_DIR_', _PS_CORE_DIR_.'/tools/');
 if (!defined('_PS_GEOIP_DIR_')) {
-    define('_PS_GEOIP_DIR_', _PS_TOOL_DIR_.'geoip/');
+    define('_PS_GEOIP_DIR_', _PS_CORE_DIR_.'/app/Resources/geoip/');
 }
 if (!defined('_PS_GEOIP_CITY_FILE_')) {
-    define('_PS_GEOIP_CITY_FILE_', 'GeoLiteCity.dat');
+    define('_PS_GEOIP_CITY_FILE_', 'GeoLite2-City.mmdb');
 }
 
 define('_PS_VENDOR_DIR_', _PS_CORE_DIR_.'/vendor/');
@@ -158,10 +158,6 @@ define('PS_ROUND_HALF_ODD', 5);
 
 /* Backward compatibility */
 define('PS_ROUND_HALF', PS_ROUND_HALF_UP);
-
-/* Registration behavior */
-define('PS_REGISTRATION_PROCESS_STANDARD', 0);
-define('PS_REGISTRATION_PROCESS_AIO', 1);
 
 /* Carrier::getCarriers() filter */
 // these defines are DEPRECATED since 1.4.5 version

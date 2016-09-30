@@ -62,10 +62,10 @@ var combinations = (function() {
 
   return {
     'init': function() {
-      var _this = this;
       var showVariationsSelector = $('#show_variations_selector input');
       var productTypeSelector = $('#form_step1_type_product');
-      var combinationsList = $('#accordion_combinations .combination');
+      var combinationsListSelector = '#accordion_combinations .combination';
+      var combinationsList = $(combinationsListSelector);
 
       if (combinationsList.length > 0) {
         productTypeSelector.prop('disabled', true);
@@ -90,13 +90,14 @@ var combinations = (function() {
       });
 
       /** on change shortcut impact on price, update form field impact on price */
-      $(document).on('keyup', 'input[id^="combination"][id$="_attribute_price"]', function() {
+      $(document).on('keyup', 'input[id^="combination"][id$="_attribute_price"]', function () {
         var id_attribute = $(this).closest('.combination-form').attr('data');
         var input = $('#accordion_combinations #attribute_' + id_attribute).find('.attribute-price input');
+
         input.val($(this).val());
 
         /* force the update of final price */
-        input.change();
+        updateFinalPrice($(input.parents('tr')[0]));
       });
 
       /** on change default attribute, update which combination is the new default */
@@ -134,6 +135,7 @@ var combinations = (function() {
       /** Combinations fields display management */
       showVariationsSelector.change(function() {
         displayFieldsManager.refresh();
+        combinationsList = $(combinationsListSelector);
 
         if ($(this).val() === '0') {
           //if combination(s) exists, alert user for deleting it
@@ -146,7 +148,7 @@ var combinations = (function() {
               onContinue: function() {
                 $.ajax({
                   type: 'GET',
-                  url: $('#accordion_combinations').attr('data-action-delete-all') + '/' + $('#form_id_product').val(),
+                  url: $('#accordion_combinations').attr('data-action-delete-all').replace(/\/\d+/, '/' + $('#form_id_product').val()),
                   success: function(response) {
                     combinationsList.remove();
                     displayFieldsManager.refresh();
@@ -160,6 +162,9 @@ var combinations = (function() {
                 productTypeSelector.prop('disabled', false);
               }
             }).show();
+          } else {
+            // enable the top header selector if no combination(s) exists
+            productTypeSelector.prop('disabled', false);
           }
         }else {
           // this means we have or we want to have combinations

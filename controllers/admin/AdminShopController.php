@@ -33,10 +33,11 @@ class AdminShopControllerCore extends AdminController
     public function __construct()
     {
         $this->bootstrap = true;
-        $this->context = Context::getContext();
         $this->table = 'shop';
         $this->className = 'Shop';
         $this->multishop_context = Shop::CONTEXT_ALL;
+
+        parent::__construct();
 
         $this->id_shop_group = (int)Tools::getValue('id_shop_group');
 
@@ -71,18 +72,7 @@ class AdminShopControllerCore extends AdminController
                 'title' => $this->l('Main URL for this shop'),
                 'havingFilter' => 'url',
             ),
-            /*'active' => array(
-                'title' => $this->trans('Enabled', array(), 'Admin.Global'),
-                'align' => 'center',
-                'active' => 'status',
-                'type' => 'bool',
-                'orderby' => false,
-                'filter_key' => 'active',
-                'width' => 50,
-            )*/
         );
-
-        parent::__construct();
     }
 
     public function getTabSlug()
@@ -246,21 +236,11 @@ class AdminShopControllerCore extends AdminController
         if (Tools::isSubmit('id_category_default')) {
             $_POST['id_category'] = Tools::getValue('id_category_default');
         }
-        /*if ((Tools::isSubmit('status') ||
-            Tools::isSubmit('status'.$this->table) ||
-            (Tools::isSubmit('submitAdd'.$this->table) && Tools::getValue($this->identifier) && !Tools::getValue('active'))) &&
-            $this->loadObject() && $this->loadObject()->active)
-        {
-            if (Tools::getValue('id_shop') == Configuration::get('PS_SHOP_DEFAULT'))
-                $this->errors[] = Tools::displayError('You cannot disable the default shop.');
-            elseif (Shop::getTotalShops() == 1)
-                $this->errors[] = Tools::displayError('You cannot disable the last shop.');
-        }*/
 
         if (Tools::isSubmit('submitAddshopAndStay') || Tools::isSubmit('submitAddshop')) {
             $shop_group = new ShopGroup((int)Tools::getValue('id_shop_group'));
             if ($shop_group->shopNameExists(Tools::getValue('name'), (int)Tools::getValue('id_shop'))) {
-                $this->errors[] = $this->trans('You cannot have two shops with the same name in the same group.', array(), 'Admin.Parameters.Notification');
+                $this->errors[] = $this->trans('You cannot have two shops with the same name in the same group.', array(), 'Admin.AdvParameters.Notification');
             }
         }
 
@@ -285,7 +265,7 @@ class AdminShopControllerCore extends AdminController
     public function processDelete()
     {
         if (!Validate::isLoadedObject($object = $this->loadObject())) {
-            $this->errors[] = $this->trans('Unable to load this shop.', array(), 'Admin.Parameters.Notification');
+            $this->errors[] = $this->trans('Unable to load this shop.', array(), 'Admin.AdvParameters.Notification');
         } elseif (!Shop::hasDependency($object->id)) {
             $result = Category::deleteCategoriesFromShop($object->id) && parent::processDelete();
             Tools::generateHtaccess();

@@ -98,7 +98,7 @@ class AdminGendersControllerCore extends AdminController
         if (empty($this->display)) {
             $this->page_header_toolbar_btn['new_gender'] = array(
                 'href' => self::$currentIndex.'&addgender&token='.$this->token,
-                'desc' => $this->l('Add new title', null, null, false),
+                'desc' => $this->l('Add new social title'),
                 'icon' => 'process-icon-new'
             );
         }
@@ -197,7 +197,7 @@ class AdminGendersControllerCore extends AdminController
     {
         if (isset($this->fieldImageSettings['name']) && isset($this->fieldImageSettings['dir'])) {
             if (!Validate::isInt(Tools::getValue('img_width')) || !Validate::isInt(Tools::getValue('img_height'))) {
-                $this->errors[] = $this->trans('Width and height must be numeric values.', array(), 'Admin.Parameters.Notification');
+                $this->errors[] = $this->trans('Width and height must be numeric values.', array(), 'Admin.ShopParameters.Notification');
             } else {
                 if ((int)Tools::getValue('img_width') > 0 && (int)Tools::getValue('img_height') > 0) {
                     $width = (int)Tools::getValue('img_width');

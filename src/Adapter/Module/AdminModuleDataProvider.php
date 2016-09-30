@@ -109,8 +109,6 @@ class AdminModuleDataProvider implements ModuleInterface
                 'module_name' => $addon->attributes->get('name'),
             ));
 
-            // Which button should be displayed first ?
-            $url_active = '';
             if ($addon->database->has('installed') && $addon->database->get('installed') == 1) {
                 if ($addon->database->get('active') == 0) {
                     $url_active = 'enable';
@@ -122,16 +120,26 @@ class AdminModuleDataProvider implements ModuleInterface
                     $url_active = 'configure';
                     unset(
                         $urls['enable'],
-                        $urls['install'],
-                        $urls['upgrade']
+                        $urls['install']
                     );
                 } else {
                     $url_active = 'disable';
                     unset(
-                        $urls['upgrade'],
                         $urls['install'],
                         $urls['enable'],
                         $urls['configure']
+                    );
+                }
+
+                if ($addon->attributes->get('is_configurable') == 0) {
+                    unset($urls['configure']);
+                }
+
+                if ($addon->canBeUpgraded()) {
+                    $url_active = 'upgrade';
+                } else {
+                    unset(
+                        $urls['upgrade']
                     );
                 }
                 if ($addon->database->get('active_on_mobile') == 0) {
@@ -139,8 +147,7 @@ class AdminModuleDataProvider implements ModuleInterface
                 } else {
                     unset($urls['enable_mobile']);
                 }
-                if ($addon->database->get('installed') == 0 || version_compare($addon->database->get('version'), $addon->disk->get('version'), '<=')
-                    && version_compare($addon->attributes->get('version'), $addon->database->get('version'), '<=')) {
+                if (!$addon->canBeUpgraded()) {
                     unset(
                         $urls['upgrade']
                     );
@@ -255,12 +262,17 @@ class AdminModuleDataProvider implements ModuleInterface
                     // so we know whether is bought
 
                     $addons = $this->addonsDataProvider->request($action, $params);
-                    foreach ($addons as $addon) {
+                    foreach ($addons as $addonsType => $addon) {
                         $addon->origin = $action;
                         $addon->origin_filter_value = $action_filter_value;
                         $addon->categoryParent = $this->categoriesProvider
                             ->getParentCategory($addon->categoryName)
                         ;
+                        if (! isset($addon->product_type)) {
+                            $addon->productType = isset($addonsType)?rtrim($addonsType, 's'):'module';
+                        } else {
+                            $addon->productType = $addon->product_type;
+                        }
                         $listAddons[$addon->name] = $addon;
                     }
                 }
@@ -319,7 +331,8 @@ class AdminModuleDataProvider implements ModuleInterface
     private function registerModuleCache($file, $data)
     {
         try {
-            $cache = (new ConfigCacheFactory(true))->cache($this->cache_dir.$file, function () {});
+            $cache = (new ConfigCacheFactory(true))->cache($this->cache_dir.$file, function () {
+            });
             $cache->write(json_encode($data));
 
             return $cache->getPath();

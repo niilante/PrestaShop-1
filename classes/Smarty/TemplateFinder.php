@@ -49,7 +49,7 @@ class TemplateFinderCore
     {
         $locale = (Validate::isLocale($locale)) ? $locale : '';
 
-        $templates = $this->getTemplateHierarchy($template, $entity, $id, $locale);
+        $templates = $this->getTemplateHierarchy($template, $entity, $id);
 
         foreach ($this->directories as $dir) {
             foreach ($templates as $tpl) {
@@ -58,6 +58,9 @@ class TemplateFinderCore
                 }
                 if (is_file($dir.$tpl.$this->extension)) {
                     return $tpl.$this->extension;
+                }
+                if (is_file($dir.$tpl) && false !== strpos($tpl, $this->extension)) {
+                    return $tpl;
                 }
             }
         }

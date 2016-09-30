@@ -42,7 +42,7 @@ class CookieCore
     protected $_path;
 
     /** @var array cipher tool instance */
-    protected $_cipherTool;
+    protected $cipherTool;
 
     protected $_modified = false;
 
@@ -76,13 +76,13 @@ class CookieCore
         $this->_name = 'PrestaShop-'.md5(($this->_standalone ? '' : _PS_VERSION_).$name.$this->_domain);
         $this->_allow_writing = true;
         $this->_salt = $this->_standalone ? str_pad('', 8, md5('ps'.__FILE__)) : _COOKIE_IV_;
+
         if ($this->_standalone) {
-            $this->_cipherTool = new Blowfish(str_pad('', 56, md5('ps'.__FILE__)), str_pad('', 56, md5('iv'.__FILE__)));
-        } elseif (!Configuration::get('PS_CIPHER_ALGORITHM') || !defined('_RIJNDAEL_KEY_')) {
-            $this->_cipherTool = new Blowfish(_COOKIE_KEY_, _COOKIE_IV_);
-        } else {
-            $this->_cipherTool = new Rijndael(_RIJNDAEL_KEY_, _RIJNDAEL_IV_);
+            $asciiSafeString = \Defuse\Crypto\Encoding::saveBytesToChecksummedAsciiSafeString('ps17', str_pad('', 32, __FILE__));
+            $this->cipherTool = new PhpEncryption($asciiSafeString);
         }
+        $this->cipherTool = new PhpEncryption(_NEW_COOKIE_KEY_);
+
         $this->_secure = (bool)$secure;
 
         $this->update();
@@ -238,7 +238,7 @@ class CookieCore
     public function logout()
     {
         $this->_content = array();
-        $this->_setcookie();
+        $this->encryptAndSetCookie();
         unset($_COOKIE[$this->_name]);
         $this->_modified = true;
     }
@@ -280,7 +280,7 @@ class CookieCore
     {
         if (isset($_COOKIE[$this->_name])) {
             /* Decrypt cookie content */
-            $content = $this->_cipherTool->decrypt($_COOKIE[$this->_name]);
+            $content = $this->cipherTool->decrypt($_COOKIE[$this->_name]);
             //printf("\$content = %s<br />", $content);
 
             /* Get cookie checksum */
@@ -298,12 +298,6 @@ class CookieCore
                     $this->_content[$tmpTab2[0]] = $tmpTab2[1];
                 }
             }
-            /* Blowfish fix */
-            if (isset($this->_content['checksum'])) {
-                $this->_content['checksum'] = (int)($this->_content['checksum']);
-            }
-            //printf("\$this->_content['checksum'] = %s<br />", $this->_content['checksum']);
-            //die();
             /* Check if cookie has not been modified */
             if (!isset($this->_content['checksum']) || $this->_content['checksum'] != $checksum) {
                 $this->logout();
@@ -325,22 +319,44 @@ class CookieCore
     }
 
     /**
-     * Setcookie according to php version
+     * Encrypt and set the Cookie
+     *
+     * @param string|null $cookie Cookie content
+     *
+     * @return bool Indicates whether the Cookie was successfully set
+     *
+     * @deprecated 1.7.0
      */
     protected function _setcookie($cookie = null)
     {
+        return $this->encryptAndSetCookie($cookie);
+    }
+
+    /**
+     * Encrypt and set the Cookie
+     *
+     * @param string|null $cookie Cookie content
+     *
+     * @return bool Indicates whether the Cookie was successfully set
+     *
+     * @since 1.7.0
+     */
+    protected function encryptAndSetCookie($cookie = null)
+    {
+        // Check if the content fits in the Cookie
+        $length = (ini_get('mbstring.func_overload') & 2) ? mb_strlen($cookie, ini_get('default_charset')) : strlen($cookie);
+        if ($length >= 1048576) {
+            return false;
+        }
         if ($cookie) {
-            $content = $this->_cipherTool->encrypt($cookie);
+            $content = $this->cipherTool->encrypt($cookie);
             $time = $this->_expire;
         } else {
             $content = 0;
             $time = 1;
         }
-        if (PHP_VERSION_ID <= 50200) { /* PHP version > 5.2.0 */
-            return setcookie($this->_name, $content, $time, $this->_path, $this->_domain, $this->_secure);
-        } else {
-            return setcookie($this->_name, $content, $time, $this->_path, $this->_domain, $this->_secure, true);
-        }
+
+        return setcookie($this->_name, $content, $time, $this->_path, $this->_domain, $this->_secure, true);
     }
 
     public function __destruct()
@@ -371,7 +387,7 @@ class CookieCore
         $cookie .= 'checksum|'.crc32($this->_salt.$cookie);
         $this->_modified = false;
         /* Cookies are encrypted for evident security reasons */
-        return $this->_setcookie($cookie);
+        return $this->encryptAndSetCookie($cookie);
     }
 
     /**

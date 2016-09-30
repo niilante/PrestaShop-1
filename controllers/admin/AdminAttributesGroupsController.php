@@ -58,7 +58,7 @@ class AdminAttributesGroupsControllerCore extends AdminController
                 'align' => 'left'
             ),
             'count_values' => array(
-                'title' => $this->trans('Values count', array(), 'Admin.Catalog.Feature'),
+                'title' => $this->trans('Values', array(), 'Admin.Catalog.Feature'),
                 'align' => 'center',
                 'class' => 'fixed-width-xs',
                 'orderby' => false,
@@ -462,33 +462,27 @@ class AdminAttributesGroupsControllerCore extends AdminController
      */
     public function initContent()
     {
-        if (!Combination::isFeatureActive()) {
-            $url = '<a href="index.php?tab=AdminPerformance&token='.Tools::getAdminTokenLite('AdminPerformance').'#featuresDetachables">'.
-                    $this->trans('Performance', array(), 'Admin.Global').'</a>';
+        if (Combination::isFeatureActive()) {
+            if ($this->display == 'edit' || $this->display == 'add') {
+                if (!($this->object = $this->loadObject(true))) {
+                    return;
+                }
+                $this->content .= $this->renderForm();
+            } elseif ($this->display == 'editAttributes') {
+                if (!$this->object = new Attribute((int)Tools::getValue('id_attribute'))) {
+                    return;
+                }
+
+                $this->content .= $this->renderFormAttributes();
+            } elseif ($this->display != 'view' && !$this->ajax) {
+                $this->content .= $this->renderList();
+                $this->content .= $this->renderOptions();
+            } elseif ($this->display == 'view' && !$this->ajax) {
+                $this->content = $this->renderView();
+            }
+        } else {
+            $url = '<a href="index.php?tab=AdminPerformance&token='.Tools::getAdminTokenLite('AdminPerformance').'#featuresDetachables">'.$this->trans('Performance', array(), 'Admin.Global').'</a>';
             $this->displayWarning(sprintf($this->trans('This feature has been disabled. You can activate it here: %s.', array('%s' => $url), 'Admin.Catalog.Notification')));
-            return;
-        }
-
-        // toolbar (save, cancel, new, ..)
-        $this->initTabModuleList();
-        $this->initToolbar();
-        $this->initPageHeaderToolbar();
-        if ($this->display == 'edit' || $this->display == 'add') {
-            if (!($this->object = $this->loadObject(true))) {
-                return;
-            }
-            $this->content .= $this->renderForm();
-        } elseif ($this->display == 'editAttributes') {
-            if (!$this->object = new Attribute((int)Tools::getValue('id_attribute'))) {
-                return;
-            }
-
-            $this->content .= $this->renderFormAttributes();
-        } elseif ($this->display != 'view' && !$this->ajax) {
-            $this->content .= $this->renderList();
-            $this->content .= $this->renderOptions();
-        } elseif ($this->display == 'view' && !$this->ajax) {
-            $this->content = $this->renderView();
         }
 
         $this->context->smarty->assign(array(
@@ -496,26 +490,24 @@ class AdminAttributesGroupsControllerCore extends AdminController
             'current' => self::$currentIndex,
             'token' => $this->token,
             'content' => $this->content,
-            'url_post' => self::$currentIndex.'&token='.$this->token,
-            'show_page_header_toolbar' => $this->show_page_header_toolbar,
-            'page_header_toolbar_title' => $this->page_header_toolbar_title,
-            'page_header_toolbar_btn' => $this->page_header_toolbar_btn
         ));
     }
 
     public function initPageHeaderToolbar()
     {
-        if (empty($this->display)) {
-            $this->page_header_toolbar_btn['new_attribute_group'] = array(
-                'href' => self::$currentIndex.'&addattribute_group&token='.$this->token,
-                'desc' => $this->trans('Add new attribute', array(), 'Admin.Catalog.Feature'),
-                'icon' => 'process-icon-new'
-            );
-            $this->page_header_toolbar_btn['new_value'] = array(
-                'href' => self::$currentIndex.'&updateattribute&id_attribute_group='.(int)Tools::getValue('id_attribute_group').'&token='.$this->token,
-                'desc' => $this->trans('Add new value', array(), 'Admin.Catalog.Feature'),
-                'icon' => 'process-icon-new'
-            );
+        if (Combination::isFeatureActive()) {
+            if (empty($this->display)) {
+                $this->page_header_toolbar_btn['new_attribute_group'] = array(
+                    'href' => self::$currentIndex.'&addattribute_group&token='.$this->token,
+                    'desc' => $this->trans('Add new attribute', array(), 'Admin.Catalog.Feature'),
+                    'icon' => 'process-icon-new'
+                );
+                $this->page_header_toolbar_btn['new_value'] = array(
+                    'href' => self::$currentIndex.'&updateattribute&id_attribute_group='.(int)Tools::getValue('id_attribute_group').'&token='.$this->token,
+                    'desc' => $this->trans('Add new value', array(), 'Admin.Catalog.Feature'),
+                    'icon' => 'process-icon-new'
+                );
+            }
         }
 
         if ($this->display == 'view') {

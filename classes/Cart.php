@@ -164,15 +164,15 @@ class CartCore extends ObjectModel
      *
      * @param int|null $id      Cart ID
      *                          null = new Cart
-     * @param int|null $id_lang Language ID
+     * @param int|null $idLang  Language ID
      *                          null = Language ID of current Context
      */
-    public function __construct($id = null, $id_lang = null)
+    public function __construct($id = null, $idLang = null)
     {
         parent::__construct($id);
 
-        if (!is_null($id_lang)) {
-            $this->id_lang = (int)(Language::getLanguage($id_lang) !== false) ? $id_lang : Configuration::get('PS_LANG_DEFAULT');
+        if (!is_null($idLang)) {
+            $this->id_lang = (int)(Language::getLanguage($idLang) !== false) ? $idLang : Configuration::get('PS_LANG_DEFAULT');
         }
 
         if ($this->id_customer) {
@@ -204,14 +204,14 @@ class CartCore extends ObjectModel
     /**
      * Adds current Cart as a new Object to the database
      *
-     * @param bool $autodate    Automatically set `date_upd` and `date_add` columns
-     * @param bool $null_values Whether we want to use NULL values instead of empty quotes values
+     * @param bool $autoDate   Automatically set `date_upd` and `date_add` columns
+     * @param bool $nullValues Whether we want to use NULL values instead of empty quotes values
      *
      * @return bool Whether the Cart has been successfully added
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public function add($autodate = true, $null_values = false)
+    public function add($autoDate = true, $nullValues = false)
     {
         if (!$this->id_lang) {
             $this->id_lang = Configuration::get('PS_LANG_DEFAULT');
@@ -220,7 +220,7 @@ class CartCore extends ObjectModel
             $this->id_shop = Context::getContext()->shop->id;
         }
 
-        $return = parent::add($autodate, $null_values);
+        $return = parent::add($autoDate, $nullValues);
         Hook::exec('actionCartSave');
 
         return $return;
@@ -229,13 +229,13 @@ class CartCore extends ObjectModel
     /**
      * Updates the current object in the database
      *
-     * @param bool $null_values Whether we want to use NULL values instead of empty quotes values
+     * @param bool $nullValues Whether we want to use NULL values instead of empty quotes values
      *
      * @return bool Whether the Cart has been successfully updated
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
-    public function update($null_values = false)
+    public function update($nullValues = false)
     {
         if (isset(self::$_nbProducts[$this->id])) {
             unset(self::$_nbProducts[$this->id]);
@@ -246,7 +246,7 @@ class CartCore extends ObjectModel
         }
 
         $this->_products = null;
-        $return = parent::update($null_values);
+        $return = parent::update($nullValues);
         Hook::exec('actionCartSave');
 
         return $return;
@@ -463,6 +463,14 @@ class CartCore extends ObjectModel
         }
 
         return $result;
+    }
+
+    /**
+     * Get cart discounts
+     */
+    public function getDiscounts()
+    {
+        return CartRule::getCustomerHighlightedDiscounts($this->id_lang, $this->id_customer, $this);
     }
 
     /**
@@ -1565,7 +1573,7 @@ class CartCore extends ObjectModel
 
     /**
      * Get total in Cart using a tax calculation method
-     * 
+     *
      * @param int $id_cart Cart ID
      *
      * @return string Formatted total amount in Cart
@@ -1868,7 +1876,7 @@ class CartCore extends ObjectModel
 
     /**
     * Get the gift wrapping price
-     * 
+     *
     * @param bool $with_taxes With or without taxes
      *
     * @return float wrapping price
@@ -3569,7 +3577,7 @@ class CartCore extends ObjectModel
     *
     * @return bool true if is a virtual cart or false
     */
-    public function isVirtualCart($strict = false)
+    public function isVirtualCart()
     {
         if (!ProductDownload::isFeatureActive()) {
             return false;
@@ -4351,7 +4359,7 @@ class CartCore extends ObjectModel
         $product_in_stock = 0;
         foreach ($this->getProducts() as $product) {
             if (!$exclusive) {
-                if (((int)$product['quantity_available'] - (int)$product['cart_quantity']) <= 0
+                if (((int)$product['quantity_available'] - (int)$product['cart_quantity']) < 0
                     && (!$ignore_virtual || !$product['is_virtual'])) {
                     return false;
                 }
@@ -4405,7 +4413,7 @@ class CartCore extends ObjectModel
      *
      * @param bool $return_collection Returns sa collection
      * @param array &$error Contains an error message if an error occurs
-     *                      
+     *
      * @return array Array of address id or of address object
      */
     public function getDeliveryAddressesWithoutCarriers($return_collection = false, &$error = array())

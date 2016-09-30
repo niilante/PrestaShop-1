@@ -48,6 +48,17 @@ if (!CartRule::isFeatureActive()) {
 
 echo "- Vouchers enabled\n";
 
+function enableGiftFeature()
+{
+    Configuration::updateValue('PS_GIFT_WRAPPING', 1);
+    Configuration::updateValue('PS_GIFT_WRAPPING_PRICE', 5);
+}
+
+enableGiftFeature();
+
+
+echo "- Gift feature display enabled\n";
+
 // Setup modules
 
 function disableModule($moduleName)
@@ -101,6 +112,8 @@ echo "- added a required customizable text field to product #1\n";
 // We need 2 languages for some tests
 Language::checkAndAddLanguage('fr');
 echo "- added French language just so that we have 2\n";
+$languages = Language::getLanguages();
+echo "  Number of languages : ".count($languages)."\n";
 
 $order = new Order(5);
 $history = new OrderHistory();

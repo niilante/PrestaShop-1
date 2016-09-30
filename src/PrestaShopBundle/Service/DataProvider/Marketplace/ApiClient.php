@@ -23,6 +23,7 @@
  *  @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  *  International Registered Trademark & Property of PrestaShop SA
  */
+
 namespace PrestaShopBundle\Service\DataProvider\Marketplace;
 
 use GuzzleHttp\Client;
@@ -45,6 +46,22 @@ class ApiClient
             ->setIsoCode($isoCode)
             ->setVersion(_PS_VERSION_)
         ;
+    }
+
+    public function setSslVerification($verifySsl)
+    {
+        $this->addonsApiClient->setDefaultOption('verify', $verifySsl);
+    }
+
+    /**
+     * @param Client $client
+     * @return $this
+     */
+    public function setClient(Client $client)
+    {
+        $this->addonsApiClient = $client;
+
+        return $this;
     }
 
     public function getNativesModules()
@@ -100,7 +117,7 @@ class ApiClient
 
         $responseArray = json_decode($response);
 
-        return $responseArray->module;
+        return isset($responseArray->module) ? $responseArray->module : array();
     }
 
     public function getModule($moduleId)

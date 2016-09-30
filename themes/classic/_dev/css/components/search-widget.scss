@@ -12,6 +12,19 @@
     }
   }
 }
+#checkout {
+  #search_widget {
+    display: none; /* Not ideal solution by allows to reuse same hooks/templates */
+  }
+}
+
+#pagenotfound {
+  .page-content {
+    #search_widget {
+      width: 100%;
+    }
+  }
+}
 
 /*** Responsive part ***/
 @include media-breakpoint-down(sm) {

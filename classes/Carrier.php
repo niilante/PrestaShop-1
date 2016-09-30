@@ -220,7 +220,9 @@ class CarrierCore extends ObjectModel
         }
 
         // Register reference
-        Db::getInstance()->execute('UPDATE `'._DB_PREFIX_.$this->def['table'].'` SET `id_reference` = '.$this->id.' WHERE `id_carrier` = '.$this->id);
+        Db::getInstance()->execute('UPDATE `'._DB_PREFIX_.$this->def['table'].'` SET `id_reference` = ' .
+            (int) $this->id.' WHERE `id_carrier` = ' . (int) $this->id
+        );
 
         return true;
     }
@@ -518,16 +520,16 @@ class CarrierCore extends ObjectModel
         }
 
         switch ($modules_filters) {
-            case 1 :
+            case 1:
                 $sql .= ' AND c.is_module = 0 ';
                 break;
-            case 2 :
+            case 2:
                 $sql .= ' AND c.is_module = 1 ';
                 break;
-            case 3 :
+            case 3:
                 $sql .= ' AND c.is_module = 1 AND c.need_range = 1 ';
                 break;
-            case 4 :
+            case 4:
                 $sql .= ' AND (c.is_module = 0 OR c.need_range = 1) ';
                 break;
         }
@@ -929,7 +931,7 @@ class CarrierCore extends ObjectModel
                 } elseif (is_int($v) || is_float($v)) {
                     $sql .= $v;
                 } else {
-                    $sql .= '\''.$v.'\'';
+                    $sql .= '\''. Db::getInstance()->escape($v, false, true) . '\'';
                 }
                 $sql .= ', ';
             }
@@ -977,7 +979,7 @@ class CarrierCore extends ObjectModel
                 foreach ($res as $val) {
                     Db::getInstance()->execute('
 						INSERT INTO `'._DB_PREFIX_.$range.'` (`id_carrier`, `delimiter1`, `delimiter2`)
-						VALUES ('.$this->id.','.(float)$val['delimiter1'].','.(float)$val['delimiter2'].')');
+						VALUES ('. (int) $this->id.','.(float)$val['delimiter1'].','.(float)$val['delimiter2'].')');
                     $range_id = (int)Db::getInstance()->Insert_ID();
 
                     $range_price_id = ($range == 'range_price') ? $range_id : 'NULL';
@@ -1003,7 +1005,7 @@ class CarrierCore extends ObjectModel
         foreach ($res as $val) {
             Db::getInstance()->execute('
 				INSERT INTO `'._DB_PREFIX_.'carrier_zone` (`id_carrier`, `id_zone`)
-				VALUES ('.$this->id.','.(int)$val['id_zone'].')
+				VALUES ('. (int) $this->id.','.(int)$val['id_zone'].')
 			');
         }
 
@@ -1559,11 +1561,14 @@ class CarrierCore extends ObjectModel
      *
      * @return bool
      */
-    public static function assignGroupToAllCarriers($id_group_list, $exception = null)
+    public static function assignGroupToAllCarriers($id_group_list, $exception = array())
     {
         if (!is_array($id_group_list)) {
             $id_group_list = array($id_group_list);
         }
+
+        $id_group_list = array_map('intval', $id_group_list);
+        $exception = array_map('intval', $exception);
 
         Db::getInstance()->execute('
 			DELETE FROM `'._DB_PREFIX_.'carrier_group`
@@ -1572,7 +1577,7 @@ class CarrierCore extends ObjectModel
         $carrier_list = Db::getInstance()->executeS('
 			SELECT id_carrier FROM `'._DB_PREFIX_.'carrier`
 			WHERE deleted = 0
-			'.(is_array($exception) ? 'AND id_carrier NOT IN ('.join(',', $exception).')' : ''));
+			'.(is_array($exception) && count($exception) > 0 ? 'AND id_carrier NOT IN ('.join(',', $exception).')' : ''));
 
         if ($carrier_list) {
             $data = array();

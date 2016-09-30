@@ -29,12 +29,11 @@ class AdminLoginControllerCore extends AdminController
     public function __construct()
     {
         $this->bootstrap = true;
+        parent::__construct();
         $this->errors = array();
-        $this->context = Context::getContext();
         $this->display_header = false;
         $this->display_footer = false;
         $this->meta_title = $this->l('Administration panel');
-        parent::__construct();
         $this->layout = _PS_ADMIN_DIR_.DIRECTORY_SEPARATOR.'themes'.DIRECTORY_SEPARATOR.$this->bo_theme
             .DIRECTORY_SEPARATOR.'template'.DIRECTORY_SEPARATOR.'controllers'.DIRECTORY_SEPARATOR.'login'
             .DIRECTORY_SEPARATOR.'layout.tpl';
@@ -279,7 +278,23 @@ class AdminLoginControllerCore extends AdminController
                 '{url}' => $admin_url.'&id_employee='.(int)$employee->id.'&reset_token='.$employee->reset_password_token
             );
 
-            if (Mail::Send($employee->id_lang, 'employee_password', Mail::l('Your new password', $employee->id_lang), $params, $employee->email, $employee->firstname.' '.$employee->lastname)) {
+            $employeeLanguage = new Language((int) $employee->id_lang);
+
+            if (
+                Mail::Send(
+                    $employee->id_lang,
+                    'employee_password',
+                    $this->trans(
+                        'Your new password',
+                        array(),
+                        'Emails.Subject',
+                        $employeeLanguage->locale
+                    ),
+                    $params,
+                    $employee->email,
+                    $employee->firstname.' '.$employee->lastname
+                )
+            ) {
                 // Update employee only if the mail can be sent
                 Shop::setContext(Shop::CONTEXT_SHOP, (int)min($employee->getAssociatedShops()));
                 die(Tools::jsonEncode(array(
@@ -333,7 +348,7 @@ class AdminLoginControllerCore extends AdminController
         }
 
         if (!count($this->errors)) {
-            $employee->passwd = Tools::encrypt($reset_password);
+            $employee->passwd = Tools::hash($reset_password);
             $employee->last_passwd_gen = date('Y-m-d H:i:s', time());
 
             $params = array(
@@ -342,7 +357,23 @@ class AdminLoginControllerCore extends AdminController
                 '{firstname}' => $employee->firstname,
             );
 
-            if (Mail::Send($employee->id_lang, 'password', Mail::l('Your new password', $employee->id_lang), $params, $employee->email, $employee->firstname.' '.$employee->lastname)) {
+            $employeeLanguage = new Language((int) $this->context->employee->id_lang);
+
+            if (
+                Mail::Send(
+                    $employee->id_lang,
+                    'password',
+                    $this->trans(
+                        'Your new password',
+                        array(),
+                        'Emails.Subject',
+                        $employeeLanguage->locale
+                    ),
+                    $params,
+                    $employee->email,
+                    $employee->firstname.' '.$employee->lastname
+                )
+            ) {
                 // Update employee only if the mail can be sent
                 Shop::setContext(Shop::CONTEXT_SHOP, (int)min($employee->getAssociatedShops()));
 

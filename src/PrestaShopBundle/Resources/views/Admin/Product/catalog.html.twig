@@ -24,10 +24,14 @@
         {% set checked = (form.vars.submitted_values is defined and submitted_values[child.id_category] is defined) ? 'checked="checked"' : '' %}
 
          <div class="radio">
-             <label>{{ child.name }}</label>
-             <div class="radio pull-right">
-                 <label><input type="radio" name="form[{{ form.vars.id }}][tree]" value="{{ child.id_category }}" {{ checked }} class="category" /></label>
-             </div>
+             <label class="category-label" for="form[{{ form.vars.id }}][tree]">{{ child.name }}
+                 <input
+                   type="radio"
+                   name="form[{{ form.vars.id }}][tree]"
+                   value="{{ child.id_category }}" {{ checked }}
+                   class="category pull-right"
+                 />
+             </label>
          </div>
 
         {% if child.children is defined %}
@@ -52,24 +56,16 @@
         <div class="col-md-12">
           <div class="pull-right">
             <a id="desc-product-export" class="list-toolbar-btn" href="{{ path('admin_product_export_action') }}">
-              <span title="" data-toggle="tooltip" class="label-tooltip" data-original-title="{{ "Export"|trans({}, 'Admin.Actions') }}" data-html="true" data-placement="top">
-                <i class="material-icons">cloud_upload</i>
-              </span>
+              {{ ps.tooltip(("Export"|trans({}, 'Admin.Actions')), 'cloud_upload') }}
             </a>
             <a id="desc-product-import" class="list-toolbar-btn" href="{{ import_link }}">
-              <span title="" data-toggle="tooltip" class="label-tooltip" data-original-title="{{ "Import"|trans({}, 'Admin.Actions') }}" data-html="true" data-placement="top">
-                <i class="material-icons">cloud_download</i>
-              </span>
+              {{ ps.tooltip(("Import"|trans({}, 'Admin.Actions')), 'cloud_download') }}
             </a>
             <a id="desc-product-show-sql" class="list-toolbar-btn" href="javascript:void(0);" onclick="showLastSqlQuery();">
-              <span class="label-tooltip" data-toggle="tooltip" data-original-title="{{ "Show SQL query"|trans({}, 'Admin.Actions') }}" data-html="true" data-placement="top">
-                <i class="material-icons">code</i>
-              </span>
+              {{ ps.tooltip(("Show SQL query"|trans({}, 'Admin.Actions')), 'code') }}
             </a>
             <a id="desc-product-sql-manager" class="list-toolbar-btn" href="javascript:void(0);" onclick="sendLastSqlQuery(createSqlQueryName());">
-              <span class="label-tooltip" data-toggle="tooltip" data-original-title="{{ "Export to SQL Manager"|trans({}, 'Admin.Actions') }}" data-html="true" data-placement="top">
-                <i class="material-icons">storage</i>
-              </span>
+              {{ ps.tooltip(("Export to SQL Manager"|trans({}, 'Admin.Actions')), 'storage') }}
             </a>
           </div>
         </div>
@@ -84,7 +80,7 @@
                 id="bulk_action_select_all"
                 onclick="$('#product_catalog_list').find('table td.checkbox-column input:checkbox').prop('checked', $(this).prop('checked')); updateBulkMenu();"
               />
-              {{ "Select All"|trans({}, 'Admin.Actions') }}
+              {{ "Select all"|trans({}, 'Admin.Actions') }}
             </label>
           </div>
         </div>
@@ -232,12 +228,18 @@
                       'column': 'price'
                     } %}
                   </th>
+
+                  {% if 'PS_STOCK_MANAGEMENT'|configuration %}
                   <th style="width: 9%">
                     {{ "Quantity"|trans({}, 'Admin.Catalog.Feature') }}
                     {% include 'PrestaShopBundle:Admin/Product/Include:catalog_order_carrets.html.twig' with {
                       'column': 'sav_quantity'
                     } %}
                   </th>
+                  {% else %}
+                    <th></th>
+                  {% endif %}
+
                   <th>
                     {{ "Status"|trans({}, 'Admin.Global') }}
                     {% include 'PrestaShopBundle:Admin/Product/Include:catalog_order_carrets.html.twig' with {
@@ -304,6 +306,7 @@
                     } %}
                   </th>
 
+                  {% if 'PS_STOCK_MANAGEMENT'|configuration %}
                   <th>
                     {% include 'PrestaShopBundle:Admin/Helpers:range_inputs.html.twig' with {
                       'input_name': "filter_column_sav_quantity",
@@ -314,6 +317,10 @@
                       'value': filter_column_sav_quantity,
                     } %}
                   </th>
+                  {% else %}
+                    <th></th>
+                  {% endif %}
+
                   <th>
                     <select data-toggle="select2" name="filter_column_active">
                       <option value=""></option>
@@ -381,12 +388,13 @@
     </div>
   </div>
 
+  {# Duplication product modal #}
   {% embed 'PrestaShopBundle:Admin/Helpers:bootstrap_popup.html.twig' with {
-    'id': "catalog_duplication_modal",
+    'id': "catalog_duplicate_all_modal",
     'title': "Duplicating products"|trans({}, 'Admin.Catalog.Notification'),
     'closable': true,
     'progressbar': {
-    'id': "catalog_duplication_progression",
+    'id': "catalog_duplicate_all_progression",
     'label': "Duplicating..."|trans({}, 'Admin.Catalog.Notification')
   },
     'actions': [],
@@ -394,13 +402,81 @@
     {% block content %}
       <div class="modal-body">
         {{ 'Duplication in progress...'|trans({}, 'Admin.Catalog.Notification') }}
-        <span id="catalog_duplication_failure" style="display: none;color: darkred;">
+        <span id="catalog_duplicate_all_failure" style="display: none;color: darkred;">
           {{ 'Duplication failed.'|trans({}, 'Admin.Catalog.Notification') }}
         </span>
       </div>
     {% endblock %}
   {% endembed %}
 
+
+  {# Activation product modal #}
+  {% embed 'PrestaShopBundle:Admin/Helpers:bootstrap_popup.html.twig' with {
+  'id': "catalog_activate_all_modal",
+  'title': "Activating products"|trans({}, 'Admin.Catalog.Notification'),
+  'closable': true,
+  'progressbar': {
+  'id': "catalog_activate_all_progression",
+  'label': "Activating..."|trans({}, 'Admin.Catalog.Notification')
+  },
+  'actions': [],
+  }%}
+    {% block content %}
+      <div class="modal-body">
+        {{ 'Activation in progress...'|trans({}, 'Admin.Catalog.Notification') }}
+        <span id="catalog_activate_all_failure" style="display: none;color: darkred;">
+          {{ 'Activation failed.'|trans({}, 'Admin.Catalog.Notification') }}
+        </span>
+      </div>
+    {% endblock %}
+  {% endembed %}
+
+
+  {# Desactivation product modal #}
+  {% embed 'PrestaShopBundle:Admin/Helpers:bootstrap_popup.html.twig' with {
+  'id': "catalog_deactivate_all_modal",
+  'title': "Deactivating products"|trans({}, 'Admin.Catalog.Notification'),
+  'closable': true,
+  'progressbar': {
+  'id': "catalog_deactivate_all_progression",
+  'label': "Deactivating..."|trans({}, 'Admin.Catalog.Notification')
+  },
+  'actions': [],
+  }%}
+    {% block content %}
+      <div class="modal-body">
+        {{ 'Deactivation in progress...'|trans({}, 'Admin.Catalog.Notification') }}
+        <span id="catalog_deactivate_all_failure" style="display: none;color: darkred;">
+          {{ 'Deactivation failed.'|trans({}, 'Admin.Catalog.Notification') }}
+        </span>
+      </div>
+    {% endblock %}
+  {% endembed %}
+
+
+  {# Deletion product modal #}
+  {% embed 'PrestaShopBundle:Admin/Helpers:bootstrap_popup.html.twig' with {
+  'id': "catalog_delete_all_modal",
+  'title': "Deleting products"|trans({}, 'Admin.Catalog.Notification'),
+  'closable': true,
+  'progressbar': {
+  'id': "catalog_delete_all_progression",
+  'label': "Deleting..."|trans({}, 'Admin.Catalog.Notification')
+  },
+  'actions': [],
+  }%}
+    {% block content %}
+      <div class="modal-body">
+        {{ 'Deletion in progress...'|trans({}, 'Admin.Catalog.Notification') }}
+        <span id="catalog_delete_all_failure" style="display: none;color: darkred;">
+          {{ 'Deletion failed.'|trans({}, 'Admin.Catalog.Notification') }}
+        </span>
+      </div>
+    {% endblock %}
+  {% endembed %}
+
+
+  {# Confirmation deletion product modal #}
   {% embed 'PrestaShopBundle:Admin/Helpers:bootstrap_popup.html.twig' with {
     'id': "catalog_deletion_modal",
     'title': "Delete products?"|trans({}, 'Admin.Catalog.Feature'),
@@ -409,7 +485,7 @@
       'type': 'button',
       'label': "Delete now"|trans({}, 'Admin.Actions'),
       'value': 'confirm',
-      'class': 'btn btn-warning',
+      'class': 'btn btn-primary btn-lg',
     }],
   }%}
     {% block content %}
@@ -427,13 +503,13 @@
       'type': 'button',
       'label': "Export to SQL Manager"|trans({}, 'Admin.Actions'),
       'value': 'sql_manager',
-      'class': 'btn',
+      'class': 'btn btn-primary btn-lg',
     }],
   } %}
     {% block content %}
       <form method="post" action="{{ sql_manager_add_link }}" id="catalog_sql_query_modal_content">
         <div class="modal-body">
-          <textarea name="sql" rows="20" cols="70"></textarea>
+          <textarea name="sql" rows="20" cols="65"></textarea>
           <input type="hidden" name="name" value="" />
         </div>
       </form>

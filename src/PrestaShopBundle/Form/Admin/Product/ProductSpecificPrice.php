@@ -129,7 +129,7 @@ class ProductSpecificPrice extends CommonAbstractType
             'required' => false,
             'placeholder' => $this->translator->trans('Apply to all combinations', array(), 'Admin.Catalog.Feature'),
             'label' => $this->translator->trans('Combinations', array(), 'Admin.Catalog.Feature'),
-            'attr' => array('data-action' => $this->router->generate('admin_get_product_combinations')),
+            'attr' => array('data-action' => $this->router->generate('admin_get_product_combinations', ['idProduct' => 1])),
         ))
         ->add('sp_from', 'PrestaShopBundle\Form\Admin\Type\DatePickerType', array(
             'required' => false,
@@ -145,7 +145,6 @@ class ProductSpecificPrice extends CommonAbstractType
             'required' => false,
             'label' => $this->translator->trans('Starting at', array(), 'Admin.Catalog.Feature'),
             'constraints' => array(
-                new Assert\NotBlank(),
                 new Assert\Type(array('type' => 'numeric')),
             ),
         ))
@@ -189,7 +188,7 @@ class ProductSpecificPrice extends CommonAbstractType
         ))
         ->add('cancel', 'Symfony\Component\Form\Extension\Core\Type\ButtonType', array(
             'label' => $this->translator->trans('Cancel', array(), 'Admin.Actions'),
-            'attr' => array('class' => 'btn-default-outline js-cancel'),
+            'attr' => array('class' => 'btn-tertiary-outline js-cancel'),
         ));
         //
         // ResetType can't be used because the product page is wrapped

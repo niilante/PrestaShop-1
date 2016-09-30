@@ -8,6 +8,7 @@ class CustomerFormatterCore implements FormFormatterInterface
 
     private $ask_for_birthdate              = true;
     private $ask_for_partner_optin          = true;
+    private $partner_optin_is_required      = true;
     private $ask_for_password               = true;
     private $password_is_required           = true;
     private $ask_for_new_password           = false;
@@ -29,6 +30,12 @@ class CustomerFormatterCore implements FormFormatterInterface
     public function setAskForPartnerOptin($ask_for_partner_optin)
     {
         $this->ask_for_partner_optin = $ask_for_partner_optin;
+        return $this;
+    }
+
+    public function setPartnerOptinRequired($partner_optin_is_required)
+    {
+        $this->partner_optin_is_required = $partner_optin_is_required;
         return $this;
     }
 
@@ -93,6 +100,22 @@ class CustomerFormatterCore implements FormFormatterInterface
             ->setRequired(true)
         ;
 
+        if (Configuration::get('PS_B2B_ENABLE')) {
+            $format['company'] = (new FormField)
+                ->setName('company')
+                ->setType('text')
+                ->setLabel($this->translator->trans(
+                    'Company', [], 'Shop.Forms.Labels'
+                ));
+            $format['siret'] = (new FormField)
+                ->setName('siret')
+                ->setType('text')
+                ->setLabel($this->translator->trans(
+                    // Please localize this string with the applicable registration number type in your country. For example : "SIRET" in France and "Código fiscal" in Spain.
+                    'Identification number', [], 'Shop.Forms.Labels'
+                ));
+        }
+
         $format['email'] = (new FormField)
             ->setName('email')
             ->setType('email')
@@ -132,7 +155,7 @@ class CustomerFormatterCore implements FormFormatterInterface
         if ($this->ask_for_birthdate) {
             $format['birthday'] = (new FormField)
                 ->setName('birthday')
-                ->setType('date')
+                ->setType('text')
                 ->setLabel(
                     $this->translator->trans(
                         'Birthdate', [], 'Shop.Forms.Labels'
@@ -155,17 +178,22 @@ class CustomerFormatterCore implements FormFormatterInterface
                         'Receive offers from our partners', [], 'Shop.Theme.CustomerAccount'
                     )
                 )
+                ->setRequired($this->partner_optin_is_required)
             ;
         }
 
+        // ToDo, replace the hook exec with HookFinder when the associated PR will be merged
         $additionalCustomerFormFields = Hook::exec('additionalCustomerFormFields', array(), null, true);
 
-        if (!is_array($additionalCustomerFormFields)) {
-            $additionalCustomerFormFields = array();
+        if (is_array($additionalCustomerFormFields)) {
+            foreach ($additionalCustomerFormFields as $moduleName => $additionnalFormFields) {
+                foreach ($additionnalFormFields as $formField) {
+                    $formField->moduleName = $moduleName;
+                    $format[$moduleName.'_'.$formField->getName()] = $formField;
+                }
+            }
         }
-
-        $format = array_merge($format, $additionalCustomerFormFields);
-
+        
         // TODO: TVA etc.?
 
         return $this->addConstraints($format);

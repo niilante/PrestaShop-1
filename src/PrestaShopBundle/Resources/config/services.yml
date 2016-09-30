@@ -5,7 +5,7 @@ imports:
 services:
     finder:
         class: Symfony\Component\Finder\Finder
-        public: false
+        shared: false
 
     main.warmer.cache_warmer:
         class: PrestaShopBundle\Cache\CacheWarmer
@@ -52,6 +52,9 @@ services:
         calls:
             - [addSubscriber, ["@prestashop.adapter.legacy.hook.subscriber"]]
             - [addSubscriber, ["@prestashop.adapter.legacy.block.helper.subscriber"]]
+            
+    prestashop.hook.finder:
+        class: PrestaShopBundle\Service\Hook\HookFinder
 
     # EVENT HANDLER
     prestashop.handler.log:
@@ -77,6 +80,29 @@ services:
         class: PrestaShop\PrestaShop\Adapter\Security\SslMiddleware
         tags:
             - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+
+    # CSRF/XSS additional protection middleware
+    prestashop.user_provider:
+        class: PrestaShopBundle\Service\DataProvider\UserProvider
+        arguments: ['@security.token_storage']
+
+    prestashop.tokenized_url_listener:
+        class: PrestaShopBundle\EventListener\TokenizedUrlsListener
+        arguments:
+            - "@security.csrf.token_manager"
+            - "@router"
+            - "@=service('prestashop.user_provider').getUsername()"
+            - "@=service('prestashop.adapter.legacy.context').getContext().employee"
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+
+    prestashop.router:
+        class: PrestaShopBundle\Service\Routing\Router
+        parent: 'router.default'
+        public: true
+        calls:
+          - ['setTokenManager', ['@security.csrf.token_manager']]
+          - ['setUserProvider', ["@=service('prestashop.user_provider')"]]
 
     # Legacy Hooks registrator
     prestashop.adapter.legacy.hook.subscriber:
@@ -258,6 +284,7 @@ services:
         class: PrestaShopBundle\Translation\Extractor\ThemeExtractor
         arguments:
           - "@prestashop.translation.extractor.smarty"
+          - "@prestashop.translation.theme_provider"
 
 # Addons API Client
     prestashop.addons.client_api:
@@ -266,4 +293,6 @@ services:
             - "@csa_guzzle.client.addons_api"
             - "@=service('prestashop.adapter.legacy.context').getContext().language.iso_code"
             - "@=service('prestashop.adapter.data_provider.country').getIsoCodebyId()"
+        calls:
+            - [ "setSslVerification", ["%prestashop.addons.api_client.verify_ssl%"]]
 

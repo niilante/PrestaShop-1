@@ -1,6 +1,6 @@
 <?php
 /**
- * 2007-2015 PrestaShop
+ * 2007-2015 PrestaShop.
  *
  * NOTICE OF LICENSE
  *
@@ -23,44 +23,36 @@
  * @license   http://opensource.org/licenses/osl-3.0.php Open Software License (OSL 3.0)
  * International Registered Trademark & Property of PrestaShop SA
  */
-
 global $smarty;
 
-$smarty->setTemplateDir(array(
-    _PS_THEME_DIR_.'templates',
-));
-$smarty->addPluginsDir(array(
-    _PS_THEME_DIR_.'plugins',
-));
-
-$smarty->registerResource('module', new SmartyResourceModule(array(
-    'theme' => _PS_THEME_DIR_.'modules/',
-    'modules' => _PS_MODULE_DIR_,
-)));
-
-if (Configuration::get('PS_HTML_THEME_COMPRESSION')) {
-    $smarty->registerFilter('output', 'smartyMinifyHTML');
+$template_dirs = array(_PS_THEME_DIR_.'templates');
+$plugin_dirs = array(_PS_THEME_DIR_.'plugins');
+if (_PARENT_THEME_NAME_) {
+    $template_dirs[] = _PS_PARENT_THEME_DIR_.'templates';
+    $plugin_dirs[] = _PS_PARENT_THEME_DIR_.'plugins';
 }
+
+$smarty->setTemplateDir($template_dirs);
+$smarty->addPluginsDir($plugin_dirs);
+
+$module_resources = array('theme' => _PS_THEME_DIR_.'modules/');
+if (_PS_PARENT_THEME_DIR_) {
+    $module_resources['parent'] = _PS_PARENT_THEME_DIR_.'modules/';
+}
+$module_resources['modules'] = _PS_MODULE_DIR_;
+$smarty->registerResource('module', new SmartyResourceModule($module_resources));
+
+$parent_resources = array();
+if (_PS_PARENT_THEME_DIR_) {
+    $parent_resources['parent'] = _PS_PARENT_THEME_DIR_.'templates/';
+}
+$smarty->registerResource('parent', new SmartyResourceParent($parent_resources));
+
 if (Configuration::get('PS_JS_HTML_THEME_COMPRESSION')) {
     $smarty->registerFilter('output', 'smartyPackJSinHTML');
 }
 
 $smarty->escape_html = true;
-smartyRegisterFunction($smarty, 'modifier', 'escape', 'smartyEscape');
-
-function smartyEscape($string, $esc_type = 'html', $char_set = null, $double_encode = true)
-{
-    require_once implode(DIRECTORY_SEPARATOR, [
-        _PS_VENDOR_DIR_, 'prestashop', 'smarty', 'plugins',
-        'modifier.escape.php'
-    ]);
-    global $smarty;
-    if (($esc_type === 'html' || $esc_type === 'htmlall') && $smarty->escape_html) {
-        return $string;
-    } else {
-        return smarty_modifier_escape($string, $esc_type, $char_set, $double_encode);
-    }
-}
 
 smartyRegisterFunction($smarty, 'function', 'widget', 'smartyWidget');
 smartyRegisterFunction($smarty, 'function', 'render', 'smartyRender');
@@ -114,7 +106,7 @@ function smartyFormField($params, &$smarty)
 
     $scope->assign($params);
 
-    $file = '_partials/form-field.tpl';
+    $file = '_partials/form-fields.tpl';
 
     if (isset($params['file'])) {
         $file = $params['file'];
@@ -179,8 +171,11 @@ function smartyTranslate($params, &$smarty)
     if (!isset($params['sprintf'])) {
         $params['sprintf'] = array();
     }
+    if (!isset($params['d'])) {
+        $params['d'] = null;
+    }
 
-    if (!empty($params['d'])) {
+    if (!is_null($params['d'])) {
         if (isset($params['tags'])) {
             $backTrace = debug_backtrace();
 
@@ -210,11 +205,14 @@ function smartyTranslate($params, &$smarty)
                 throw new Exception($errorMessage);
             } else {
                 PrestaShopLogger::addLog($errorMessage);
+
                 return $params['s'];
             }
         }
+    }
 
-        return Context::getContext()->getTranslator()->trans($params['s'], $params['sprintf'], $params['d']);
+    if (($translation = Context::getContext()->getTranslator()->trans($params['s'], $params['sprintf'], $params['d'])) !== $params['s']) {
+        return $translation;
     }
 
     $string = str_replace('\'', '\\\'', $params['s']);

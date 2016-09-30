@@ -112,7 +112,11 @@ class OrderDetailControllerCore extends FrontController
                         Mail::Send(
                             $this->context->language->id,
                             'order_customer_comment',
-                            Mail::l('Message from a customer'),
+                            $this->trans(
+                                'Message from a customer',
+                                array(),
+                                'Emails.Subject'
+                            ),
                             array(
                                 '{lastname}' => $customer->lastname,
                                 '{firstname}' => $customer->firstname,
@@ -150,7 +154,17 @@ class OrderDetailControllerCore extends FrontController
 
         parent::initContent();
 
-        if (!($id_order = (int)Tools::getValue('id_order')) || !Validate::isUnsignedId($id_order)) {
+        $id_order = (int)Tools::getValue('id_order');
+        $id_order = $id_order && Validate::isUnsignedId($id_order) ? $id_order : false;
+
+        if (!$id_order) {
+            $reference = Tools::getValue('reference');
+            $reference = $reference && Validate::isReference($reference) ? $reference : false;
+            $order = $reference ? Order::getByReference($reference)->getFirst() : false;
+            $id_order = $order ? $order->id : false;
+        }
+
+        if (!$id_order) {
             $this->redirect_after = '404';
             $this->redirect();
         } else {
@@ -184,5 +198,18 @@ class OrderDetailControllerCore extends FrontController
         }
 
         $this->setTemplate('customer/order-detail');
+    }
+
+    public function getBreadcrumbLinks()
+    {
+        $breadcrumb = parent::getBreadcrumbLinks();
+
+        $breadcrumb['links'][] = $this->addMyAccountToBreadcrumb();
+        $breadcrumb['links'][] = array(
+            'title' => $this->trans('Order history', array(), 'Shop.Theme.CustomerAccount'),
+            'url' => $this->context->link->getPageLink('history'),
+        );
+
+        return $breadcrumb;
     }
 }

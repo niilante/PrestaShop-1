@@ -6,7 +6,7 @@
           {foreach from=$cart.vouchers.added item=voucher}
             <li class="cart-summary-line">
               <span class="label">{$voucher.name}</span>
-              <a href="{$voucher.delete_url}" data-link-action="remove-voucher"><i class="material-icons">{l s='delete' d='Shop.Theme.Actions'}</i></a>
+              <a href="{$voucher.delete_url}" data-link-action="remove-voucher"><i class="material-icons">&#xE872;</i></a>
               <div class="pull-xs-right">
                 {$voucher.reduction_formatted}
               </div>
@@ -19,7 +19,7 @@
           {l s='Have a promo code?' d='Shop.Theme.Checkout'}
         </a>
       </p>
-      <div class="promo-code collapse" id="promo-code">
+      <div class="promo-code collapse{if $cart.discounts|count > 0} in{/if}" id="promo-code">
         <form action="{$urls.pages.cart}" data-link-action="add-voucher" method="post">
           <input type="hidden" name="token" value="{$static_token}">
           <input type="hidden" name="addDiscount" value="1">
@@ -30,6 +30,18 @@
           <i class="material-icons">&#xE001;</i><span class="m-l-1 js-error-text"></span>
         </div>
       </div>
+      {if $cart.discounts|count > 0}
+        <p class="block-promo promo-highlighted">
+          {l s='Take advantage of our exclusive offers:' d='Shop.Theme.Actions'}
+        </p>
+        <ul class="js-discount card-block promo-discounts">
+        {foreach from=$cart.discounts item=discount}
+          <li class="cart-summary-line">
+            <span class="label"><span class="code">{$discount.code}</span> - {$discount.name}</span>
+          </li>
+        {/foreach}
+        </ul>
+      {/if}
     </div>
   </div>
 {/if}

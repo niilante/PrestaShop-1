@@ -187,6 +187,11 @@ class CartPresenter implements PresenterInterface
                                     $product['id_product_attribute'],
                                     $presentedCustomization['id_customization']
                                 );
+                                $product['update_quantity_url'] = $this->link->getUpdateQuantityCartURL(
+                                    $product['id_product'],
+                                    $product['id_product_attribute'],
+                                    $presentedCustomization['id_customization']
+                                );
 
                                 $presentedCustomization['up_quantity_url'] = $this->link->getUpQuantityCartURL(
                                     $product['id_product'],
@@ -205,6 +210,8 @@ class CartPresenter implements PresenterInterface
                                     $product['id_product_attribute'],
                                     $presentedCustomization['id_customization']
                                 );
+
+                                $presentedCustomization['update_quantity_url'] = $product['update_quantity_url'];
 
                                 $product['customizations'][] = $presentedCustomization;
                             }
@@ -341,6 +348,20 @@ class CartPresenter implements PresenterInterface
                 : $this->translator->trans('(tax excluded)', array(), 'Shop.Theme'),
         );
 
+        $discounts = $cart->getDiscounts();
+        $vouchers = $this->getTemplateVarVouchers($cart);
+
+        $cartRulesIds = array_flip(array_map(
+            function ($voucher) {
+               return $voucher['id_cart_rule'];
+            },
+            $vouchers['added']
+        ));
+
+        $discounts = array_filter($discounts, function ($discount) use ($cartRulesIds) {
+            return !array_key_exists($discount['id_cart_rule'], $cartRulesIds);
+        });
+
         return array(
             'products' => $products,
             'totals' => $totals,
@@ -351,7 +372,8 @@ class CartPresenter implements PresenterInterface
             'id_address_delivery' => $cart->id_address_delivery,
             'id_address_invoice' => $cart->id_address_invoice,
             'is_virtual' => $cart->isVirtualCart(),
-            'vouchers' => $this->getTemplateVarVouchers($cart),
+            'vouchers' => $vouchers,
+            'discounts' => $discounts,
             'minimalPurchase' => $minimalPurchase,
             'minimalPurchaseRequired' => ($this->priceFormatter->convertAmount($productsTotalExcludingTax) < $minimalPurchase) ?
                 sprintf(
@@ -373,11 +395,20 @@ class CartPresenter implements PresenterInterface
         $cartVouchers = $cart->getCartRules();
         $vouchers = array();
 
+        $cartHasTax = is_null($cart->id) ? false : $cart::getTaxesAverageUsed($cart->id);
+
         foreach ($cartVouchers as $cartVoucher) {
             $vouchers[$cartVoucher['id_cart_rule']]['id_cart_rule'] = $cartVoucher['id_cart_rule'];
             $vouchers[$cartVoucher['id_cart_rule']]['name'] = $cartVoucher['name'];
             $vouchers[$cartVoucher['id_cart_rule']]['reduction_percent'] = $cartVoucher['reduction_percent'];
             $vouchers[$cartVoucher['id_cart_rule']]['reduction_currency'] = $cartVoucher['reduction_currency'];
+
+            // Voucher reduction depending of the cart tax rule
+            // if $cartHasTax & voucher is tax excluded, set amount voucher to tax included
+            if ($cartHasTax && $cartVoucher['reduction_tax'] == '0') {
+                $cartVoucher['reduction_amount'] = $cartVoucher['reduction_amount'] * (1 + $cartHasTax / 100);
+            }
+
             $vouchers[$cartVoucher['id_cart_rule']]['reduction_amount'] = $cartVoucher['reduction_amount'];
 
             if (isset($cartVoucher['reduction_percent']) && $cartVoucher['reduction_amount'] == '0.00') {

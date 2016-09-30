@@ -1,6 +1,9 @@
 {extends file='checkout/_partials/steps/checkout-step.tpl'}
 
 {block name='step_content'}
+
+  {hook h='displayPaymentTop'}
+
   <div class="payment-options">
     {foreach from=$payment_options item="module_options"}
       {foreach from=$module_options item="option"}
@@ -76,7 +79,7 @@
          because it makes ensuring they were checked very tricky and overcomplicates
          the template. Might change later.
       *}
-      {l s='By confirming your order, I certify that I have read and agree with all of the conditions below:' d='Shop.Theme.Checkout'}
+      {l s='By confirming the order, you certify that you have read and agree with all of the conditions below:' d='Shop.Theme.Checkout'}
     </p>
 
     <form id="conditions-to-approve" method="GET">
@@ -116,7 +119,7 @@
         {l s='Order with an obligation to pay' d='Shop.Theme.Checkout'}
       </button>
       {if $show_final_summary}
-        <article class="alert alert-danger m-t-2 js-alert-payment-condtions" role="alert" data-alert="danger">
+        <article class="alert alert-danger m-t-2 js-alert-payment-conditions" role="alert" data-alert="danger">
           {l
             s='Please make sure you\'ve chosen a [1]payment method[/1] and accepted the [2]terms and conditions[/2].'
             sprintf=[

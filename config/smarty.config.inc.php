@@ -59,6 +59,32 @@ if (defined('_PS_ADMIN_DIR_')) {
     require_once dirname(__FILE__).'/smartyfront.config.inc.php';
 }
 
+require_once _PS_SMARTY_DIR_.'plugins/modifier.truncate.php';
+
+// This escape modifier is required for invoice PDF generation
+function smartyEscape($string, $esc_type = 'html', $char_set = null, $double_encode = true)
+{
+    $escapeModifierFile = implode(
+        DIRECTORY_SEPARATOR,
+        array(
+            _PS_VENDOR_DIR_,
+            'prestashop',
+            'smarty',
+            'plugins',
+            'modifier.escape.php',
+        )
+    );
+    require_once $escapeModifierFile;
+
+    global $smarty;
+    if (($esc_type === 'html' || $esc_type === 'htmlall') && $smarty->escape_html) {
+        return $string;
+    } else {
+        return smarty_modifier_escape($string, $esc_type, $char_set, $double_encode);
+    }
+}
+
+smartyRegisterFunction($smarty, 'modifier', 'escape', 'smartyEscape');
 smartyRegisterFunction($smarty, 'modifier', 'truncate', 'smarty_modifier_truncate');
 smartyRegisterFunction($smarty, 'function', 'dump', 'smartyDump'); // Debug only
 smartyRegisterFunction($smarty, 'function', 'l', 'smartyTranslate', false);
@@ -77,39 +103,9 @@ function smartyDump($params, &$smarty)
     return Tools::dump($params['var']);
 }
 
-function smarty_modifier_truncate($string, $length = 80, $etc = '...', $break_words = false, $middle = false, $charset = 'UTF-8')
-{
-    if (!$length) {
-        return '';
-    }
-
-    $string = trim($string);
-
-    if (Tools::strlen($string) > $length) {
-        $length -= min($length, Tools::strlen($etc));
-        if (!$break_words && !$middle) {
-            $string = preg_replace('/\s+?(\S+)?$/u', '', Tools::substr($string, 0, $length + 1, $charset));
-        }
-
-        return !$middle ? Tools::substr($string, 0, $length, $charset).$etc : Tools::substr($string, 0, $length / 2, $charset).$etc.Tools::substr($string, -$length / 2, $length, $charset);
-    } else {
-        return $string;
-    }
-}
-
 function smarty_modifier_htmlentitiesUTF8($string)
 {
     return Tools::htmlentitiesUTF8($string);
-}
-function smartyMinifyHTML($tpl_output, &$smarty)
-{
-    $context = Context::getContext();
-    if (isset($context->controller) && in_array($context->controller->php_self, array('pdf-invoice', 'pdf-order-return', 'pdf-order-slip'))) {
-        return $tpl_output;
-    }
-    $tpl_output = Media::minifyHTML($tpl_output);
-
-    return $tpl_output;
 }
 
 function smartyPackJSinHTML($tpl_output, &$smarty)
@@ -132,6 +128,9 @@ function smartyRegisterFunction($smarty, $type, $function, $params, $lazy = true
     // lazy is better if the function is not called on every page
     if ($lazy) {
         $lazy_register = SmartyLazyRegister::getInstance();
+        if ($lazy_register->isRegistered($params)) {
+            return;
+        }
         $lazy_register->register($params);
 
         if (is_array($params)) {

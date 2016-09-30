@@ -230,9 +230,7 @@ class AdminModulesPositionsControllerCore extends AdminController
 
     public function initContent()
     {
-        $this->initTabModuleList();
         $this->addjqueryPlugin('sortable');
-        $this->initPageHeaderToolbar();
 
         if (array_key_exists('addToHook', $_GET) || array_key_exists('editGraft', $_GET) || (Tools::isSubmit('submitAddToHook') && $this->errors)) {
             $this->display = 'edit';
@@ -244,9 +242,6 @@ class AdminModulesPositionsControllerCore extends AdminController
 
         $this->context->smarty->assign(array(
             'content' => $this->content,
-            'show_page_header_toolbar' => $this->show_page_header_toolbar,
-            'page_header_toolbar_title' => $this->page_header_toolbar_title,
-            'page_header_toolbar_btn' => $this->page_header_toolbar_btn
         ));
     }
 
@@ -254,7 +249,7 @@ class AdminModulesPositionsControllerCore extends AdminController
     {
         $this->page_header_toolbar_btn['save'] = array(
             'href' => self::$currentIndex.'&addToHook'.($this->display_key ? '&show_modules='.$this->display_key : '').'&token='.$this->token,
-            'desc' => $this->l('Transplant a module', null, null, false),
+            'desc' => $this->trans('Transplant a module', array(), 'Admin.Design.Feature'),
             'icon' => 'process-icon-anchor'
         );
 
@@ -302,7 +297,7 @@ class AdminModulesPositionsControllerCore extends AdminController
 
         $this->toolbar_btn['save'] = array(
             'href' => self::$currentIndex.'&addToHook'.($this->display_key ? '&show_modules='.$this->display_key : '').'&token='.$this->token,
-            'desc' => $this->l('Transplant a module')
+            'desc' => $this->trans('Transplant a module', array(), 'Admin.Design.Feature')
         );
 
         $this->context->smarty->assign(array(
@@ -419,7 +414,7 @@ class AdminModulesPositionsControllerCore extends AdminController
             $file_list = ($file_list) ? array($file_list) : array();
         }
 
-        $content = '<p><input type="text" name="exceptions['.$shop_id.']" value="'.implode(', ', $file_list).'" id="em_text_'.$shop_id.'" placeholder="'.$this->l('E.g. address, addresses, attachment').'"/></p>';
+        $content = '<p><input type="text" name="exceptions['.$shop_id.']" value="'.implode(', ', $file_list).'" id="em_text_'.$shop_id.'" placeholder="'.$this->trans('E.g. address, addresses, attachment', array(), 'Admin.Design.Help').'"/></p>';
 
         if ($shop_id) {
             $shop = new Shop($shop_id);
@@ -428,7 +423,7 @@ class AdminModulesPositionsControllerCore extends AdminController
 
         $content .= '<p>
 					<select size="25" id="em_list_'.$shop_id.'" multiple="multiple">
-					<option disabled="disabled">'.$this->l('___________ CUSTOM ___________').'</option>';
+					<option disabled="disabled">'.$this->trans('___________ CUSTOM ___________', array(),'Admin.Design.Feature').'</option>';
 
         // @todo do something better with controllers
         $controllers = Dispatcher::getControllers(_PS_FRONT_CONTROLLER_DIR_);
@@ -440,13 +435,13 @@ class AdminModulesPositionsControllerCore extends AdminController
             }
         }
 
-        $content .= '<option disabled="disabled">'.$this->l('____________ CORE ____________').'</option>';
+        $content .= '<option disabled="disabled">'.$this->trans('____________ CORE ____________', array(), 'Admin.Design.Feature').'</option>';
 
         foreach ($controllers as $k => $v) {
             $content .= '<option value="'.$k.'">'.$k.'</option>';
         }
 
-        $modules_controllers_type = array('admin' => $this->l('Admin modules controller'), 'front' => $this->l('Front modules controller'));
+        $modules_controllers_type = array('admin' => $this->trans('Admin modules controller', array(), 'Admin.Design.Feature'), 'front' => $this->trans('Front modules controller', array(), 'Admin.Design.Feature'));
         foreach ($modules_controllers_type as $type => $label) {
             $content .= '<option disabled="disabled">____________ '.$label.' ____________</option>';
             $all_modules_controllers = Dispatcher::getModuleControllers($type);

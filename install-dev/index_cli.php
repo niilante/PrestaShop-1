@@ -24,6 +24,8 @@
  * International Registered Trademark & Property of PrestaShop SA
  */
 
+use PrestaShop\PrestaShop\Core\Cldr\Composer\Hook;
+
 /* Redefine REQUEST_URI */
 $_SERVER['REQUEST_URI'] = '/install/index_cli.php';
 require_once dirname(__FILE__).'/init.php';
@@ -34,6 +36,7 @@ try {
     require_once _PS_INSTALL_PATH_.'classes/controllerConsole.php';
     InstallControllerConsole::execute($argc, $argv);
     echo '-- Installation successful! --'."\n";
+    Hook::init(null);
     exit(0);
 } catch (PrestashopInstallerException $e) {
     $e->displayMessage();

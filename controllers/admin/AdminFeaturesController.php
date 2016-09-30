@@ -190,18 +190,20 @@ class AdminFeaturesControllerCore extends AdminController
 
     public function initPageHeaderToolbar()
     {
-        if (empty($this->display)) {
-            $this->page_header_toolbar_btn['new_feature'] = array(
-                'href' => self::$currentIndex.'&addfeature&token='.$this->token,
-                'desc' => $this->trans('Add new feature', array(), 'Admin.Catalog.Feature'),
-                'icon' => 'process-icon-new'
-            );
+        if (Feature::isFeatureActive()) {
+            if (empty($this->display)) {
+                $this->page_header_toolbar_btn['new_feature'] = array(
+                    'href' => self::$currentIndex.'&addfeature&token='.$this->token,
+                    'desc' => $this->trans('Add new feature', array(), 'Admin.Catalog.Feature'),
+                    'icon' => 'process-icon-new'
+                );
 
-            $this->page_header_toolbar_btn['new_feature_value'] = array(
-                'href' => self::$currentIndex.'&addfeature_value&id_feature='.(int)Tools::getValue('id_feature').'&token='.$this->token,
-                'desc' => $this->trans('Add new feature value', array(), 'Admin.Catalog.Help'),
-                'icon' => 'process-icon-new'
-            );
+                $this->page_header_toolbar_btn['new_feature_value'] = array(
+                    'href' => self::$currentIndex.'&addfeature_value&id_feature='.(int)Tools::getValue('id_feature').'&token='.$this->token,
+                    'desc' => $this->trans('Add new feature value', array(), 'Admin.Catalog.Help'),
+                    'icon' => 'process-icon-new'
+                );
+            }
         }
 
         if ($this->display == 'view') {
@@ -406,10 +408,6 @@ class AdminFeaturesControllerCore extends AdminController
     public function initContent()
     {
         if (Feature::isFeatureActive()) {
-            // toolbar (save, cancel, new, ..)
-            $this->initTabModuleList();
-            $this->initToolbar();
-            $this->initPageHeaderToolbar();
             if ($this->display == 'edit' || $this->display == 'add') {
                 if (!$this->loadObject(true)) {
                     return;
@@ -425,7 +423,6 @@ class AdminFeaturesControllerCore extends AdminController
                 if (!$this->object = new FeatureValue((int)Tools::getValue('id_feature_value'))) {
                     return;
                 }
-
                 $this->content .= $this->initFormFeatureValue();
             } elseif (!$this->ajax) {
                 // If a feature value was saved, we need to reset the values to display the list
@@ -439,10 +436,6 @@ class AdminFeaturesControllerCore extends AdminController
 
         $this->context->smarty->assign(array(
             'content' => $this->content,
-            'url_post' => self::$currentIndex.'&token='.$this->token,
-            'show_page_header_toolbar' => $this->show_page_header_toolbar,
-            'page_header_toolbar_title' => $this->page_header_toolbar_title,
-            'page_header_toolbar_btn' => $this->page_header_toolbar_btn
         ));
     }
 

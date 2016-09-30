@@ -9,6 +9,7 @@ use Symfony\Component\Translation\TranslatorInterface;
 use Configuration;
 use Language;
 use Link;
+use Tools;
 
 class ProductPresenter
 {
@@ -32,11 +33,30 @@ class ProductPresenter
         $this->translator = $translator;
     }
 
+    /**
+     * Prices should be shown for products with active "Show price" option
+     * and customer groups with active "Show price" option.
+     *
+     * @param ProductPresentationSettings $settings
+     * @param array $product
+     * @return bool
+     */
     private function shouldShowPrice(
         ProductPresentationSettings $settings,
         array $product
     ) {
-        return  $settings->showPrices && $product['available_for_order'];
+        return $settings->showPrices && (bool) $product['show_price'];
+    }
+
+    /**
+     * The "Add to cart" button should be shown for products available for order.
+     *
+     * @param $product
+     * @return mixed
+     */
+    private function shouldShowAddToCartButton($product)
+    {
+        return (bool) $product['available_for_order'];
     }
 
     private function fillImages(
@@ -159,30 +179,30 @@ class ProductPresenter
         return $presentedProduct;
     }
 
-    private function shouldEnableAddToCartButton(
-        ProductPresentationSettings $settings,
-        array $product
-    ) {
-        $can_add_to_cart = $this->shouldShowPrice($settings, $product);
-
+    private function shouldEnableAddToCartButton(array $product)
+    {
         if (($product['customizable'] == 2 || !empty($product['customization_required']))) {
-            $can_add_to_cart = false;
+            $shouldShowButton = false;
 
             if (isset($product['customizations'])) {
-                $can_add_to_cart = true;
+                $shouldShowButton = true;
                 foreach ($product['customizations']['fields'] as $field) {
                     if ($field['required'] && !$field['is_customized']) {
-                        $can_add_to_cart = false;
+                        $shouldShowButton = false;
                     }
                 }
             }
+        } else {
+            $shouldShowButton = true;
         }
+
+        $shouldShowButton = $shouldShowButton && $this->shouldShowAddToCartButton($product);
 
         if ($product['quantity'] <= 0 && !$product['allow_oosp']) {
-            $can_add_to_cart = false;
+            $shouldShowButton = false;
         }
 
-        return $can_add_to_cart;
+        return $shouldShowButton;
     }
 
     private function getAddToCartURL(array $product)
@@ -322,6 +342,18 @@ class ProductPresenter
         return $presentedProduct;
     }
 
+    private function addAttachmentsInformation($presentedProduct)
+    {
+        if (!isset($presentedProduct['attachments'])) {
+            return $presentedProduct;
+        }
+        foreach ($presentedProduct['attachments'] as &$attachment) {
+            $attachment['file_size_formatted'] = Tools::formatBytes($attachment['file_size'], 2);
+        }
+
+        return $presentedProduct;
+    }
+
     public function addQuantityInformation(
         array $presentedProduct,
         ProductPresentationSettings $settings,
@@ -339,20 +371,21 @@ class ProductPresenter
 
         if ($show_availability) {
             if ($product['quantity'] > 0) {
-                $presentedProduct['availability_message'] = $product['available_now'];
-                $presentedProduct['availability'] = 'available';
-                $presentedProduct['availability_date'] = null;
+                $presentedProduct['availability_date'] = $product['available_date'];
+                if ($product['quantity'] < $settings->lastRemainingItems) {
+                    $presentedProduct = $this->applyLastItemsInStockDisplayRule($product, $settings, $presentedProduct);
+                } else {
+                    $presentedProduct['availability_message'] = $product['available_now'];
+                    $presentedProduct['availability'] = 'available';
+                }
             } elseif ($product['allow_oosp']) {
                 if ($product['available_later']) {
                     $presentedProduct['availability_message'] = $product['available_later'];
                     $presentedProduct['availability_date'] = $product['available_date'];
                     $presentedProduct['availability'] = 'available';
                 } else {
-                    $presentedProduct['availability_message'] = $this->translator->trans(
-                        'Out of stock',
-                        array(),
-                        'Shop.Theme.Catalog'
-                    );
+                    // no default message when allow_oosp (out of stock) is enabled & available_later is empty
+                    $presentedProduct['availability_message'] = null;
                     $presentedProduct['availability_date'] = $product['available_date'];
                     $presentedProduct['availability'] = 'unavailable';
                 }
@@ -377,6 +410,85 @@ class ProductPresenter
             $presentedProduct['availability_message'] = null;
             $presentedProduct['availability_date'] = null;
             $presentedProduct['availability'] = null;
+        }
+
+        return $presentedProduct;
+    }
+
+    /**
+     * Override availability message when quantity of products in stock is less than what has been defined
+     * in Shop Parameters > Product Settings
+     *
+     * @param array $product
+     * @param ProductPresentationSettings $settings
+     * @param array $presentedProduct
+     * @return array
+     */
+    protected function applyLastItemsInStockDisplayRule(
+        array $product,
+        ProductPresentationSettings $settings,
+        array $presentedProduct
+    )
+    {
+        $presentedProduct['availability_message'] = $this->translator->trans(
+            'Last items in stock',
+            array(),
+            'Shop.Theme.Catalog'
+        );
+        $presentedProduct['availability'] = 'last_remaining_items';
+
+        return $presentedProduct;
+    }
+
+    /**
+     * Add new attribute reference_to_display if the product reference or the selected combinations reference is set
+     * @param array $product
+     * @param array $presentedProduct
+     * @return array
+     */
+    public function addReferenceToDisplay(array $product, array $presentedProduct)
+    {
+        foreach ($product['attributes'] as $attribute) {
+            if (isset($attribute['reference']) && $attribute['reference'] != null) {
+                $presentedProduct['reference_to_display'] = $attribute['reference'];
+            } else {
+                $presentedProduct['reference_to_display'] = $product['reference'];
+            }
+        }
+
+        return $presentedProduct;
+    }
+
+    /**
+     * Add all specific references to product
+     * @param array $product
+     * @param array $presentedProduct
+     * @return array
+     */
+    public function addAttributesSpecificReferences(array $product, array $presentedProduct)
+    {
+        $presentedProduct['specific_references'] = array_slice($product['attributes'], 0)[0];
+        //this attributes should not be displayed in FO
+        unset(
+            $presentedProduct['specific_references']['id_attribute'],
+            $presentedProduct['specific_references']['id_attribute_group'],
+            $presentedProduct['specific_references']['name'],
+            $presentedProduct['specific_references']['group'],
+            $presentedProduct['specific_references']['reference']
+        );
+
+        //if the attribute's references doesn't exist then get the product's references or unset it
+        foreach ($presentedProduct['specific_references'] as $key => $value) {
+            if (empty($value)) {
+                if (!empty($product[$key])) {
+                    $presentedProduct['specific_references'][$key] = $product[$key];
+                } else {
+                    unset($presentedProduct['specific_references'][$key]);
+                }
+            }
+        }
+        if(empty($presentedProduct['specific_references'])){
+            unset($presentedProduct['specific_references']);
         }
 
         return $presentedProduct;
@@ -417,11 +529,13 @@ class ProductPresenter
             $language
         );
 
-        if ($this->shouldEnableAddToCartButton($settings, $product)) {
+        if ($this->shouldEnableAddToCartButton($product)) {
             $presentedProduct['add_to_cart_url'] = $this->getAddToCartURL($product);
         } else {
             $presentedProduct['add_to_cart_url'] = null;
         }
+
+        $presentedProduct = $this->addAttachmentsInformation($presentedProduct);
 
         $presentedProduct = $this->addMainVariantsInformation(
             $presentedProduct,
@@ -469,6 +583,18 @@ class ProductPresenter
             $product
         );
 
+        // If product has attributes and it's no added to card
+        if (isset($product['attributes']) && !isset($product['cart_quantity'])) {
+            $presentedProduct = $this->addReferenceToDisplay(
+                $product,
+                $presentedProduct
+            );
+
+            $presentedProduct = $this->addAttributesSpecificReferences(
+                $product,
+                $presentedProduct
+            );
+        }
         return $presentedProduct;
     }
 }

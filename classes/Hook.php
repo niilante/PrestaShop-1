@@ -79,6 +79,31 @@ class HookCore extends ObjectModel
      */
     protected static $_hook_modules_cache_exec = null;
 
+    /**
+     * List of all deprecated hooks
+     * @var array
+     */
+    protected static $deprecated_hooks = array(
+        // Back office
+        'backOfficeFooter' => array('from' => '1.7.0.0'),
+        'displayBackOfficeFooter' => array('from' => '1.7.0.0'),
+
+        // Shipping step
+        'displayCarrierList' => array('from' => '1.7.0.0'),
+        'extraCarrier' => array('from' => '1.7.0.0'),
+
+        // Payment step
+        'hookBackBeforePayment' => array('from' => '1.7.0.0'),
+        'hookDisplayBeforePayment' => array('from' => '1.7.0.0'),
+        'hookOverrideTOSDisplay' => array('from' => '1.7.0.0'),
+
+        // Product page
+        'displayProductTabContent' => array('from' => '1.7.0.0'),
+        'displayProductTab' => array('from' => '1.7.0.0'),
+    );
+
+    const MODULE_LIST_BY_HOOK_KEY = 'hook_module_exec_list_';
+
     public function add($autodate = true, $null_values = false)
     {
         Cache::clean('hook_idsbyname');
@@ -295,11 +320,14 @@ class HookCore extends ObjectModel
     public static function isModuleRegisteredOnHook($module_instance, $hook_name, $id_shop)
     {
         $prefix = _DB_PREFIX_;
-        $id_hook = (int)Hook::getIdByName($hook_name);
+        $id_hook = (int) Hook::getIdByName($hook_name);
+        $id_shop = (int) $id_shop;
+        $id_module = (int) $module_instance->id;
+
         $sql = "SELECT * FROM {$prefix}hook_module
-                  WHERE `id_hook` = $id_hook
-                  AND `id_module` = {$module_instance->id}
-                  AND `id_shop` = $id_shop";
+                  WHERE `id_hook` = {$id_hook}
+                  AND `id_module` = {$id_module}
+                  AND `id_shop` = {$id_shop}";
 
         $rows = Db::getInstance()->executeS($sql);
         return !empty($rows);
@@ -429,7 +457,7 @@ class HookCore extends ObjectModel
     public static function getHookModuleExecList($hook_name = null)
     {
         $context = Context::getContext();
-        $cache_id = 'hook_module_exec_list_'.(isset($context->shop->id) ? '_'.$context->shop->id : '').((isset($context->customer)) ? '_'.$context->customer->id : '');
+        $cache_id = self::MODULE_LIST_BY_HOOK_KEY.(isset($context->shop->id) ? '_'.$context->shop->id : '').((isset($context->customer)) ? '_'.$context->customer->id : '');
         if (!Cache::isStored($cache_id) || $hook_name == 'displayPayment' || $hook_name == 'displayPaymentEU' || $hook_name == 'paymentOptions' || $hook_name == 'displayBackOfficeHeader') {
             $frontend = true;
             $groups = array();
@@ -589,6 +617,13 @@ class HookCore extends ObjectModel
             return false;
         }
 
+        if (array_key_exists($hook_name, self::$deprecated_hooks)) {
+            $deprecVersion = isset(self::$deprecated_hooks[$hook_name]['from'])?
+                    self::$deprecated_hooks[$hook_name]['from']:
+                    _PS_VERSION_;
+            Tools::displayAsDeprecated('The hook '. $hook_name .' is deprecated in PrestaShop v.'. $deprecVersion);
+        }
+
         // Store list of executed hooks on this page
         Hook::$executed_hooks[$id_hook] = $hook_name;
 
@@ -604,7 +639,11 @@ class HookCore extends ObjectModel
 
         // Look on modules list
         $altern = 0;
-        $output = '';
+        if ($array_return) {
+            $output = array();
+        } else {
+            $output = '';
+        }
 
         if ($disable_non_native_modules && !isset(Hook::$native_module)) {
             Hook::$native_module = Module::getNativeModuleList();
@@ -683,6 +722,8 @@ class HookCore extends ObjectModel
                     $display = Hook::coreCallHook($moduleInstance, 'hook'.$hook_name, $hook_args);
                 } elseif ($hook_retro_callable) {
                     $display = Hook::coreCallHook($moduleInstance, 'hook'.$retro_hook_name, $hook_args);
+                } else {
+                    continue;
                 }
 
                 if ($array_return) {

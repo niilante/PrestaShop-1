@@ -130,7 +130,7 @@ class FrontControllerCore extends Controller
     public static $initialized = false;
 
     /**
-     * @var array Holds current customer's groups.
+     * @var array Holds current customer's groups
      */
     protected static $currentCustomerGroups;
 
@@ -522,37 +522,6 @@ class FrontControllerCore extends Controller
     }
 
     /**
-     * Non-static translation method for frontoffice.
-     *
-     * @deprecated use Context::getContext()->getTranslator()->trans($id, $parameters, $domain, $locale); instead
-     *
-     * @param string       $string       Term or expression in english
-     * @param false|string $specific     Specific name, only for ModuleFrontController
-     * @param string|null  $class        Name of the class
-     * @param bool         $addslashes   If set to true, the return value will pass through addslashes(). Otherwise, stripslashes().
-     * @param bool         $htmlentities If set to true(default), the return value will pass through htmlentities($string, ENT_QUOTES, 'utf-8')
-     *
-     * @return string The translation if available, or the english default text.
-     */
-    protected function l($string, $specific = false, $class = null, $addslashes = false, $htmlentities = true)
-    {
-        if ($class === null) {
-            $class = get_class($this);
-        }
-
-        if (is_a($this, 'ModuleFrontController')) {
-            // ModuleFrontController must assign $this->module
-            if (isset($this->module) && is_a($this->module, 'Module')) {
-                return $this->module->l($string, $specific);
-            } else {
-                return $string;
-            }
-        }
-
-        return Translate::getFrontTranslation($string, $class, $addslashes, $htmlentities);
-    }
-
-    /**
      * Redirects to redirect_after link.
      *
      * @see $redirect_after
@@ -759,32 +728,30 @@ class FrontControllerCore extends Controller
     /**
      * Geolocation management.
      *
-     * @param Country $default_country
+     * @param Country $defaultCountry
      *
      * @return Country|false
      */
-    protected function geolocationManagement($default_country)
+    protected function geolocationManagement($defaultCountry)
     {
         if (!in_array($_SERVER['SERVER_NAME'], array('localhost', '127.0.0.1'))) {
             /* Check if Maxmind Database exists */
             if (@filemtime(_PS_GEOIP_DIR_._PS_GEOIP_CITY_FILE_)) {
                 if (!isset($this->context->cookie->iso_code_country) || (isset($this->context->cookie->iso_code_country) && !in_array(strtoupper($this->context->cookie->iso_code_country), explode(';', Configuration::get('PS_ALLOWED_COUNTRIES'))))) {
-                    include_once _PS_GEOIP_DIR_.'geoipcity.inc';
-
-                    $gi = geoip_open(realpath(_PS_GEOIP_DIR_._PS_GEOIP_CITY_FILE_), GEOIP_STANDARD);
-                    $record = geoip_record_by_addr($gi, Tools::getRemoteAddr());
+                    $reader = new GeoIp2\Database\Reader(_PS_GEOIP_DIR_._PS_GEOIP_CITY_FILE_);
+                    $record = $reader->city(Tools::getRemoteAddr());
 
                     if (is_object($record)) {
-                        if (!in_array(strtoupper($record->country_code), explode(';', Configuration::get('PS_ALLOWED_COUNTRIES'))) && !FrontController::isInWhitelistForGeolocation()) {
+                        if (!in_array(strtoupper($record->country->isoCode), explode(';', Configuration::get('PS_ALLOWED_COUNTRIES'))) && !FrontController::isInWhitelistForGeolocation()) {
                             if (Configuration::get('PS_GEOLOCATION_BEHAVIOR') == _PS_GEOLOCATION_NO_CATALOG_) {
                                 $this->restrictedCountry = Country::GEOLOC_FORBIDDEN;
                             } elseif (Configuration::get('PS_GEOLOCATION_BEHAVIOR') == _PS_GEOLOCATION_NO_ORDER_) {
                                 $this->restrictedCountry = Country::GEOLOC_CATALOG_MODE;
-                                $this->warning[] = sprintf($this->l('You cannot place a new order from your country (%s).'), $record->country_name);
+                                $this->warning[] = sprintf($this->l('You cannot place a new order from your country (%s).'), $record->country->name);
                             }
                         } else {
-                            $has_been_set = !isset($this->context->cookie->iso_code_country);
-                            $this->context->cookie->iso_code_country = strtoupper($record->country_code);
+                            $hasBeenSet = !isset($this->context->cookie->iso_code_country);
+                            $this->context->cookie->iso_code_country = strtoupper($record->country->isoCode);
                         }
                     }
                 }
@@ -793,21 +760,21 @@ class FrontControllerCore extends Controller
                     $this->context->cookie->iso_code_country = Country::getIsoById(Configuration::get('PS_COUNTRY_DEFAULT'));
                 }
 
-                if (isset($this->context->cookie->iso_code_country) && ($id_country = (int) Country::getByIso(strtoupper($this->context->cookie->iso_code_country)))) {
+                if (isset($this->context->cookie->iso_code_country) && ($idCountry = (int) Country::getByIso(strtoupper($this->context->cookie->iso_code_country)))) {
                     /* Update defaultCountry */
-                    if ($default_country->iso_code != $this->context->cookie->iso_code_country) {
-                        $default_country = new Country($id_country);
+                    if ($defaultCountry->iso_code != $this->context->cookie->iso_code_country) {
+                        $defaultCountry = new Country($idCountry);
                     }
-                    if (isset($has_been_set) && $has_been_set) {
-                        $this->context->cookie->id_currency = (int) ($default_country->id_currency ? (int) $default_country->id_currency : (int) Configuration::get('PS_CURRENCY_DEFAULT'));
+                    if (isset($hasBeenSet) && $hasBeenSet) {
+                        $this->context->cookie->id_currency = (int) ($defaultCountry->id_currency ? (int) $defaultCountry->id_currency : (int) Configuration::get('PS_CURRENCY_DEFAULT'));
                     }
 
-                    return $default_country;
+                    return $defaultCountry;
                 } elseif (Configuration::get('PS_GEOLOCATION_NA_BEHAVIOR') == _PS_GEOLOCATION_NO_CATALOG_ && !FrontController::isInWhitelistForGeolocation()) {
                     $this->restrictedCountry = Country::GEOLOC_FORBIDDEN;
                 } elseif (Configuration::get('PS_GEOLOCATION_NA_BEHAVIOR') == _PS_GEOLOCATION_NO_ORDER_ && !FrontController::isInWhitelistForGeolocation()) {
                     $this->restrictedCountry = Country::GEOLOC_CATALOG_MODE;
-                    $this->warning[] = sprintf($this->l('You cannot place a new order from your country (%s).'), (isset($record->country_name) && $record->country_name) ? $record->country_name : $this->l('Undefined'));
+                    $this->warning[] = sprintf($this->l('You cannot place a new order from your country (%s).'), (isset($record->country->name) && $record->country->name) ? $record->country->name : $this->l('Undefined'));
                 }
             }
         }
@@ -822,17 +789,26 @@ class FrontControllerCore extends Controller
      */
     public function setMedia()
     {
-        $this->addCSS(array(
+        $cssFileList = array();
+        $parent = $this->context->shop->theme->get('parent');
+
+        if ($parent && $this->context->shop->theme->get('assets.use_parent_assets')) {
+            $cssFileList = array(
+                _PS_ALL_THEMES_DIR_.$parent.'/assets/css/theme.css',
+                _PS_ALL_THEMES_DIR_.$parent.'/assets/css/custom.css',
+            );
+        }
+
+        $cssFileList = array_merge($cssFileList, array(
             _THEME_CSS_DIR_.'theme.css',
             _THEME_CSS_DIR_.'custom.css',
         ));
 
         if ($this->context->language->is_rtl) {
-            $this->addCSS(array(
-                _THEME_CSS_DIR_.'rtl.css',
-            ));
+            $cssFileList[] = _THEME_CSS_DIR_.'rtl.css';
         }
 
+        $this->addCSS($cssFileList);
         $this->addJS(array(
             _THEMES_DIR_.'core.js',
             _THEME_JS_DIR_.'theme.js',
@@ -1161,6 +1137,18 @@ class FrontControllerCore extends Controller
         $entity = $this->php_self;
 
         $layout = $this->context->shop->theme->getLayoutRelativePathForPage($entity);
+
+        if ($overridden_layout = Hook::exec(
+            'overrideLayoutTemplate',
+            array(
+                'default_layout' => $layout,
+                'entity' => $entity,
+                'locale' => $this->context->language->locale,
+                'controller' => $this,
+            )
+        )) {
+            return $overridden_layout;
+        }
 
         if ((int) Tools::getValue('content_only')) {
             $layout = 'layouts/layout-content-only.tpl';
@@ -1645,9 +1633,12 @@ class FrontControllerCore extends Controller
             $this->context->language
         );
 
+        $customer = new Customer();
+
         $formatter
             ->setAskForPartnerOptin(Configuration::get('PS_CUSTOMER_OPTIN'))
             ->setAskForBirthdate(Configuration::get('PS_CUSTOMER_BIRTHDATE'))
+            ->setPartnerOptinRequired($customer->isFieldRequired('optin'))
         ;
 
         return $formatter;
@@ -1726,7 +1717,7 @@ class FrontControllerCore extends Controller
         header('Content-Type: application/json');
         $this->ajaxDie(Tools::jsonEncode(array(
             'address_form' => $this->render(
-                'customer/_partials/address-form.tpl',
+                'customer/_partials/address-form',
                 $addressForm->getTemplateVariables()
             ),
         )));

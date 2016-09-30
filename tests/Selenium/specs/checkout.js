@@ -148,7 +148,7 @@ function runScenario (scenario) {
           } else {
             it("should have an existing address pre-selected", function () {
               return browser
-                .waitForVisible('#checkout-addresses-step.-js-current')
+                .waitForVisible('#checkout-addresses-step.-current', 5000)
                 .isSelected('[name="id_address_delivery"]')
                 .should.become.true
               ;
@@ -188,7 +188,7 @@ function runScenario (scenario) {
             });
 
             it('should have gone to the next step after clicking on the button in the invoice address form', function () {
-              return browser.waitForVisible('#checkout-delivery-step.-js-current');
+              return browser.waitForVisible('#checkout-delivery-step.-current');
             });
           }
 
@@ -206,12 +206,20 @@ function runScenario (scenario) {
             ;
           });
           it("the delivery options have an impact on cart summary display", function () {
-            var cartSummary = browser.getValue('#checkout-cart-summary');
+            var cartSummary = browser.getValue('#js-cart-summary');
             return browser
               .click('#delivery_option_2')
-              .getValue('#checkout-cart-summary')
+              .getValue('#js-cart-summary')
               .should.not.equal(cartSummary)
             ;
+          });
+          it("the gift display check would have an impact on cart summary display", function () {
+            var cartSummary = browser.getValue('#js-cart-summary');
+            return browser
+              .click('input.js-gift-checkbox')
+              .getValue('#js-cart-summary')
+              .should.not.equal(cartSummary)
+              ;
           });
           it('should be marked as complete after user has clicked continue', function () {
             return browser

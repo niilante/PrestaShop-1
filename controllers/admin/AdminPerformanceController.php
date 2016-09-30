@@ -25,6 +25,8 @@
  */
 
 use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Filesystem\Exception\IOException;
 
 /**
  * @property Configuration $object
@@ -136,7 +138,6 @@ class AdminPerformanceControllerCore extends AdminController
                             'value' => 'mysql',
                             'label' => $this->l('MySQL')
                         ),
-
                     )
                 ),
                 array(
@@ -383,23 +384,6 @@ class AdminPerformanceControllerCore extends AdminController
                 ),
                 array(
                     'type' => 'switch',
-                    'label' => $this->l('Minify HTML'),
-                    'name' => 'PS_HTML_THEME_COMPRESSION',
-                    'values' => array(
-                        array(
-                            'id' => 'PS_HTML_THEME_COMPRESSION_1',
-                            'value' => 1,
-                            'label' => $this->l('Minify HTML after "Smarty compile" execution')
-                        ),
-                        array(
-                            'id' => 'PS_HTML_THEME_COMPRESSION_0',
-                            'value' => 0,
-                            'label' => $this->l('Keep HTML as original')
-                        )
-                    )
-                ),
-                array(
-                    'type' => 'switch',
                     'label' => $this->l('Compress inline JavaScript in HTML'),
                     'name' => 'PS_JS_HTML_THEME_COMPRESSION',
                     'values' => array(
@@ -462,7 +446,6 @@ class AdminPerformanceControllerCore extends AdminController
 
         $this->fields_value['PS_CSS_THEME_CACHE'] = Configuration::get('PS_CSS_THEME_CACHE');
         $this->fields_value['PS_JS_THEME_CACHE'] = Configuration::get('PS_JS_THEME_CACHE');
-        $this->fields_value['PS_HTML_THEME_COMPRESSION'] = Configuration::get('PS_HTML_THEME_COMPRESSION');
         $this->fields_value['PS_JS_HTML_THEME_COMPRESSION'] = Configuration::get('PS_JS_HTML_THEME_COMPRESSION');
         $this->fields_value['PS_HTACCESS_CACHE_CONTROL'] = Configuration::get('PS_HTACCESS_CACHE_CONTROL');
         $this->fields_value['PS_JS_DEFER'] = Configuration::get('PS_JS_DEFER');
@@ -511,55 +494,6 @@ class AdminPerformanceControllerCore extends AdminController
         $this->fields_value['_MEDIA_SERVER_3_'] = Configuration::get('PS_MEDIA_SERVER_3');
     }
 
-    public function initFieldsetCiphering()
-    {
-        $phpdoc_langs = array('en', 'zh', 'fr', 'de', 'ja', 'pl', 'ro', 'ru', 'fa', 'es', 'tr');
-        $php_lang = in_array($this->context->language->iso_code, $phpdoc_langs) ? $this->context->language->iso_code : 'en';
-
-        $warning_mcrypt = ' '.$this->l('(you must install the [a]Mcrypt extension[/a])');
-        $warning_mcrypt = str_replace('[a]', '<a href="http://www.php.net/manual/'.substr($php_lang, 0, 2).'/book.mcrypt.php" target="_blank">', $warning_mcrypt);
-        $warning_mcrypt = str_replace('[/a]', '</a>', $warning_mcrypt);
-
-        if (defined('_RIJNDAEL_KEY_') && defined('_RIJNDAEL_IV_')) {
-            $this->fields_form[5]['form'] = array(
-
-                'legend' => array(
-                    'title' => $this->l('Ciphering'),
-                    'icon' => 'icon-desktop'
-                ),
-                'input' => array(
-                    array(
-                        'type' => 'hidden',
-                        'name' => 'ciphering_up'
-                    ),
-                    array(
-                        'type' => 'radio',
-                        'label' => $this->l('Algorithm'),
-                        'name' => 'PS_CIPHER_ALGORITHM',
-                        'hint' => $this->l('Mcrypt is faster than our custom BlowFish class, but requires the "mcrypt" PHP extension. If you change this configuration, all cookies will be reset.'),
-                        'values' => array(
-                            array(
-                                'id' => 'PS_CIPHER_ALGORITHM_1',
-                                'value' => 1,
-                                'label' => $this->l('Use Rijndael with mcrypt lib.').(function_exists('mcrypt_encrypt') ? '' : $warning_mcrypt)
-                            ),
-                            array(
-                                'id' => 'PS_CIPHER_ALGORITHM_0',
-                                'value' => 0,
-                                'label' => $this->l('Use the custom BlowFish class.')
-                            )
-                        )
-                    )
-                ),
-                'submit' => array(
-                    'title' => $this->trans('Save', array(), 'Admin.Actions')
-                )
-            );
-        }
-
-        $this->fields_value['PS_CIPHER_ALGORITHM'] = Configuration::get('PS_CIPHER_ALGORITHM');
-    }
-
     public function initFieldsetCaching()
     {
         $phpdoc_langs = array('en', 'zh', 'fr', 'de', 'ja', 'pl', 'ro', 'ru', 'fa', 'es', 'tr');
@@ -580,8 +514,6 @@ class AdminPerformanceControllerCore extends AdminController
         $warning_xcache = ' '.$this->l('(you must install the [a]Xcache extension[/a])');
         $warning_xcache = str_replace('[a]', '<a href="http://xcache.lighttpd.net" target="_blank">', $warning_xcache);
         $warning_xcache = str_replace('[/a]', '</a>', $warning_xcache);
-
-        $warning_fs = ' '.sprintf($this->l('(the directory %s must be writable)'), realpath(_PS_CACHEFS_DIRECTORY_));
 
         $this->fields_form[6]['form'] = array(
             'legend' => array(
@@ -615,13 +547,7 @@ class AdminPerformanceControllerCore extends AdminController
                     'type' => 'radio',
                     'label' => $this->l('Caching system'),
                     'name' => 'caching_system',
-                    'hint' => $this->l('The CacheFS system should be used only when the infrastructure contains one front-end server. If you are not sure, ask your hosting company.'),
                     'values' => array(
-                        array(
-                            'id' => 'CacheFs',
-                            'value' => 'CacheFs',
-                            'label' => $this->l('File System').(is_writable(_PS_CACHEFS_DIRECTORY_) ? '' : $warning_fs)
-                        ),
                         array(
                             'id' => 'CacheMemcache',
                             'value' => 'CacheMemcache',
@@ -645,11 +571,6 @@ class AdminPerformanceControllerCore extends AdminController
 
                     )
                 ),
-                array(
-                    'type' => 'text',
-                    'label' => $this->l('Directory depth'),
-                    'name' => 'ps_cache_fs_directory_depth'
-                ),
             ),
             'submit' => array(
                 'title' => $this->trans('Save', array(), 'Admin.Actions')
@@ -657,10 +578,8 @@ class AdminPerformanceControllerCore extends AdminController
             'memcachedServers' => true
         );
 
-        $depth = Configuration::get('PS_CACHEFS_DIRECTORY_DEPTH');
         $this->fields_value['cache_active'] = _PS_CACHE_ENABLED_;
         $this->fields_value['caching_system'] = _PS_CACHING_SYSTEM_;
-        $this->fields_value['ps_cache_fs_directory_depth'] = $depth ? $depth : 1;
 
         $this->tpl_form_vars['servers'] = CacheMemcache::getMemcachedServers();
         $this->tpl_form_vars['_PS_CACHE_ENABLED_'] = _PS_CACHE_ENABLED_;
@@ -675,7 +594,6 @@ class AdminPerformanceControllerCore extends AdminController
 
         if (!defined('_PS_HOST_MODE_')) {
             $this->initFieldsetMediaServer();
-            $this->initFieldsetCiphering();
             $this->initFieldsetCaching();
         }
 
@@ -690,20 +608,11 @@ class AdminPerformanceControllerCore extends AdminController
 
     public function initContent()
     {
-        $this->initTabModuleList();
-        $this->initToolbar();
-        $this->initPageHeaderToolbar();
         $this->display = '';
         $this->content .= $this->renderForm();
 
         $this->context->smarty->assign(array(
             'content' => $this->content,
-            'url_post' => self::$currentIndex.'&token='.$this->token,
-            'show_page_header_toolbar' => $this->show_page_header_toolbar,
-            'page_header_toolbar_title' => $this->page_header_toolbar_title,
-            'page_header_toolbar_btn' => $this->page_header_toolbar_btn,
-            'title' => $this->page_header_toolbar_title,
-            'toolbar_btn' => $this->page_header_toolbar_btn
         ));
     }
 
@@ -730,13 +639,13 @@ class AdminPerformanceControllerCore extends AdminController
         if (Tools::isSubmit('submitAddServer')) {
             if ($this->access('add')) {
                 if (!Tools::getValue('memcachedIp')) {
-                    $this->errors[] = $this->trans('The Memcached IP is missing.', array(), 'Admin.Parameters.Notification');
+                    $this->errors[] = $this->trans('The Memcached IP is missing.', array(), 'Admin.AdvParameters.Notification');
                 }
                 if (!Tools::getValue('memcachedPort')) {
-                    $this->errors[] = $this->trans('The Memcached port is missing.', array(), 'Admin.Parameters.Notification');
+                    $this->errors[] = $this->trans('The Memcached port is missing.', array(), 'Admin.AdvParameters.Notification');
                 }
                 if (!Tools::getValue('memcachedWeight')) {
-                    $this->errors[] = $this->trans('The Memcached weight is missing.', array(), 'Admin.Parameters.Notification');
+                    $this->errors[] = $this->trans('The Memcached weight is missing.', array(), 'Admin.AdvParameters.Notification');
                 }
                 if (!count($this->errors)) {
                     if (CacheMemcache::addServer(pSQL(Tools::getValue('memcachedIp')),
@@ -744,7 +653,7 @@ class AdminPerformanceControllerCore extends AdminController
                         (int)Tools::getValue('memcachedWeight'))) {
                         Tools::redirectAdmin(self::$currentIndex.'&token='.Tools::getValue('token').'&conf=4');
                     } else {
-                        $this->errors[] = $this->trans('The Memcached server cannot be added.', array(), 'Admin.Parameters.Notification');
+                        $this->errors[] = $this->trans('The Memcached server cannot be added.', array(), 'Admin.AdvParameters.Notification');
                     }
                 }
             } else {
@@ -757,7 +666,7 @@ class AdminPerformanceControllerCore extends AdminController
                 if (CacheMemcache::deleteServer((int)Tools::getValue('deleteMemcachedServer'))) {
                     Tools::redirectAdmin(self::$currentIndex.'&token='.Tools::getValue('token').'&conf=4');
                 } else {
-                    $this->errors[] = $this->trans('There was an error when attempting to delete the Memcached server.', array(), 'Admin.Parameters.Notification');
+                    $this->errors[] = $this->trans('There was an error when attempting to delete the Memcached server.', array(), 'Admin.AdvParameters.Notification');
                 }
             } else {
                 $this->errors[] = $this->trans('You do not have permission to delete this.', array(), 'Admin.Notifications.Error');
@@ -769,7 +678,10 @@ class AdminPerformanceControllerCore extends AdminController
             if ($this->access('edit')) {
                 Configuration::updateValue('PS_SMARTY_FORCE_COMPILE', Tools::getValue('smarty_force_compile', _PS_SMARTY_NO_COMPILE_));
 
-                if (Configuration::get('PS_SMARTY_CACHE') != Tools::getValue('smarty_cache') || Configuration::get('PS_SMARTY_CACHING_TYPE') != Tools::getValue('smarty_caching_type')) {
+                if (
+                    Configuration::get('PS_SMARTY_CACHE') != Tools::getValue('smarty_cache')
+                    || Configuration::get('PS_SMARTY_CACHING_TYPE') != Tools::getValue('smarty_caching_type')
+                ) {
                     Tools::clearSmartyCache();
                 }
 
@@ -810,11 +722,11 @@ class AdminPerformanceControllerCore extends AdminController
                 @mkdir($theme_cache_directory, 0777, true);
                 if (((bool)Tools::getValue('PS_CSS_THEME_CACHE') || (bool)Tools::getValue('PS_JS_THEME_CACHE')) && !is_writable($theme_cache_directory)) {
                     $this->errors[] = $this->trans(
-                        'To use Smart Cache, the directory %directorypath% must be writable.',
+                        'To use Smarty Cache, the directory %directorypath% must be writable.',
                         array(
                             '%directorypath%' => realpath($theme_cache_directory)
                         ),
-                        'Admin.Parameters.Notification'
+                        'Admin.AdvParameters.Notification'
                     );
                 }
 
@@ -834,7 +746,6 @@ class AdminPerformanceControllerCore extends AdminController
 
                 if (!Configuration::updateValue('PS_CSS_THEME_CACHE', (int)Tools::getValue('PS_CSS_THEME_CACHE')) ||
                     !Configuration::updateValue('PS_JS_THEME_CACHE', (int)Tools::getValue('PS_JS_THEME_CACHE')) ||
-                    !Configuration::updateValue('PS_HTML_THEME_COMPRESSION', (int)Tools::getValue('PS_HTML_THEME_COMPRESSION')) ||
                     !Configuration::updateValue('PS_JS_HTML_THEME_COMPRESSION', (int)Tools::getValue('PS_JS_HTML_THEME_COMPRESSION')) ||
                     !Configuration::updateValue('PS_JS_DEFER', (int)Tools::getValue('PS_JS_DEFER')) ||
                     !Configuration::updateValue('PS_HTACCESS_CACHE_CONTROL', (int)Tools::getValue('PS_HTACCESS_CACHE_CONTROL'))) {
@@ -861,13 +772,13 @@ class AdminPerformanceControllerCore extends AdminController
         if ((bool)Tools::getValue('media_server_up') && !defined('_PS_HOST_MODE_')) {
             if ($this->access('edit')) {
                 if (Tools::getValue('_MEDIA_SERVER_1_') != null && !Validate::isFileName(Tools::getValue('_MEDIA_SERVER_1_'))) {
-                    $this->errors[] = $this->trans('Media server #1 is invalid', array(), 'Admin.Parameters.Notification');
+                    $this->errors[] = $this->trans('Media server #1 is invalid', array(), 'Admin.AdvParameters.Notification');
                 }
                 if (Tools::getValue('_MEDIA_SERVER_2_') != null && !Validate::isFileName(Tools::getValue('_MEDIA_SERVER_2_'))) {
-                    $this->errors[] = $this->trans('Media server #2 is invalid', array(), 'Admin.Parameters.Notification');
+                    $this->errors[] = $this->trans('Media server #2 is invalid', array(), 'Admin.AdvParameters.Notification');
                 }
                 if (Tools::getValue('_MEDIA_SERVER_3_') != null && !Validate::isFileName(Tools::getValue('_MEDIA_SERVER_3_'))) {
-                    $this->errors[] = $this->trans('Media server #3 is invalid', array(), 'Admin.Parameters.Notification');
+                    $this->errors[] = $this->trans('Media server #3 is invalid', array(), 'Admin.AdvParameters.Notification');
                 }
                 if (!count($this->errors)) {
                     $base_urls = array();
@@ -904,45 +815,21 @@ class AdminPerformanceControllerCore extends AdminController
                 $this->errors[] = $this->trans('You do not have permission to edit this.', array(), 'Admin.Notifications.Error');
             }
         }
-        if ((bool)Tools::getValue('ciphering_up') && Configuration::get('PS_CIPHER_ALGORITHM') != (int)Tools::getValue('PS_CIPHER_ALGORITHM')) {
-            if ($this->access('edit')) {
-                $algo = (int)Tools::getValue('PS_CIPHER_ALGORITHM');
 
-                $config = Yaml::parse(_PS_ROOT_DIR_.'/app/config/parameters.yml');
-
-                if ($algo) {
-                    if (!function_exists('mcrypt_encrypt')) {
-                        $this->errors[] = $this->trans('The "Mcrypt" PHP extension is not activated on this server.', array(), 'Admin.Parameters.Notification');
-                    } else {
-                        if (!isset($config['parameters']['_rijndael_key'])) {
-                            $key_size = mcrypt_get_key_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC);
-                            $key = Tools::passwdGen($key_size);
-                            $config['parameters']['_rijndael_key'] = $key;
-                        }
-                        if (!isset($config['parameters']['_rijndael_iv'])) {
-                            $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC);
-                            $iv = base64_encode(mcrypt_create_iv($iv_size, MCRYPT_RAND));
-                            $config['parameters']['_rijndael_iv'] = $iv;
-                        }
-                    }
-                }
-                if (!count($this->errors)) {
-                    // If there is not settings file modification or if the backup and replacement of the settings file worked
-                    if (file_put_contents(_PS_ROOT_DIR_.'/app/config/parameters.yml', Yaml::dump($config))) {
-                        Configuration::updateValue('PS_CIPHER_ALGORITHM', $algo);
-                        $redirectAdmin = true;
-                    } else {
-                        $this->errors[] = $this->trans('The settings file cannot be overwritten.', array(), 'Admin.Parameters.Notification');
-                    }
-                }
-            } else {
-                $this->errors[] = $this->trans('You do not have permission to edit this.', array(), 'Admin.Notifications.Error');
+        $filesystem = new Filesystem();
+        $phpParametersFilepath = _PS_ROOT_DIR_.'/app/config/parameters.php';
+        $exportPhpConfigFile = function ($config, $destination) use ($filesystem) {
+            try {
+                $filesystem->dumpFile($destination, '<?php return '.var_export($config, true).';'."\n");
+            } catch (IOException $e) {
+                return false;
             }
-        }
+            return true;
+        };
 
         if ((bool)Tools::getValue('cache_up')) {
             if ($this->access('edit')) {
-                $config = Yaml::parse(_PS_ROOT_DIR_.'/app/config/parameters.yml');
+                $config = require($phpParametersFilepath);
 
                 $cache_active = (bool)Tools::getValue('cache_active');
 
@@ -950,48 +837,27 @@ class AdminPerformanceControllerCore extends AdminController
                     $config['parameters']['ps_caching'] = $caching_system;
                 } else {
                     $cache_active = false;
-                    $this->errors[] = $this->trans('The caching system is missing.', array(), 'Admin.Parameters.Notification');
+                    $this->errors[] = $this->trans('The caching system is missing.', array(), 'Admin.AdvParameters.Notification');
                 }
                 if ($cache_active) {
                     if ($caching_system == 'CacheMemcache' && !extension_loaded('memcache')) {
-                        $this->errors[] = $this->trans('To use Memcached, you must install the Memcache PECL extension on your server.', array(), 'Admin.Parameters.Notification').'
+                        $this->errors[] = $this->trans('To use Memcached, you must install the Memcache PECL extension on your server.', array(), 'Admin.AdvParameters.Notification').'
 							<a href="http://www.php.net/manual/en/memcache.installation.php">http://www.php.net/manual/en/memcache.installation.php</a>';
                     } elseif ($caching_system == 'CacheMemcached' && !extension_loaded('memcached')) {
-                        $this->errors[] = $this->trans('To use Memcached, you must install the Memcached PECL extension on your server.', array(), 'Admin.Parameters.Notification').'
+                        $this->errors[] = $this->trans('To use Memcached, you must install the Memcached PECL extension on your server.', array(), 'Admin.AdvParameters.Notification').'
 							<a href="http://www.php.net/manual/en/memcached.installation.php">http://www.php.net/manual/en/memcached.installation.php</a>';
                     } elseif ($caching_system == 'CacheApc'  && !extension_loaded('apc') && !extension_loaded('apcu')) {
-                        $this->errors[] = $this->trans('To use APC cache, you must install the APC PECL extension on your server.', array(), 'Admin.Parameters.Notification').'
+                        $this->errors[] = $this->trans('To use APC cache, you must install the APC PECL extension on your server.', array(), 'Admin.AdvParameters.Notification').'
 							<a href="http://fr.php.net/manual/fr/apc.installation.php">http://fr.php.net/manual/fr/apc.installation.php</a>';
                     } elseif ($caching_system == 'CacheXcache' && !extension_loaded('xcache')) {
-                        $this->errors[] = $this->trans('To use Xcache, you must install the Xcache extension on your server.', array(), 'Admin.Parameters.Notification').'
+                        $this->errors[] = $this->trans('To use Xcache, you must install the Xcache extension on your server.', array(), 'Admin.AdvParameters.Notification').'
 							<a href="http://xcache.lighttpd.net">http://xcache.lighttpd.net</a>';
                     } elseif ($caching_system == 'CacheXcache' && !ini_get('xcache.var_size')) {
-                        $this->errors[] = $this->trans('To use Xcache, you must configure "xcache.var_size" for the Xcache extension (recommended value 16M to 64M).', array(), 'Admin.Parameters.Notification').'
+                        $this->errors[] = $this->trans('To use Xcache, you must configure "xcache.var_size" for the Xcache extension (recommended value 16M to 64M).', array(), 'Admin.AdvParameters.Notification').'
 							<a href="http://xcache.lighttpd.net/wiki/XcacheIni">http://xcache.lighttpd.net/wiki/XcacheIni</a>';
-                    } elseif ($caching_system == 'CacheFs') {
-                        if (!is_dir(_PS_CACHEFS_DIRECTORY_)) {
-                            @mkdir(_PS_CACHEFS_DIRECTORY_, 0777, true);
-                        } elseif (!is_writable(_PS_CACHEFS_DIRECTORY_)) {
-                            $this->errors[] = $this->trans(
-                                'To use CacheFS, the directory %directorypath% must be writable.',
-                                array(
-                                    '%directorypath%' => realpath(_PS_CACHEFS_DIRECTORY_)
-                                ),
-                                'Admin.Parameters.Notification'
-                            );
-                        }
                     }
 
-                    if ($caching_system == 'CacheFs') {
-                        if (!($depth = Tools::getValue('ps_cache_fs_directory_depth'))) {
-                            $this->errors[] = $this->trans('Please set a directory depth.', array(), 'Admin.Parameters.Notification');
-                        }
-                        if (!count($this->errors)) {
-                            CacheFs::deleteCacheDirectory();
-                            CacheFs::createCacheDirectories((int)$depth);
-                            Configuration::updateValue('PS_CACHEFS_DIRECTORY_DEPTH', (int)$depth);
-                        }
-                    } elseif ($caching_system == 'CacheMemcache' && !_PS_CACHE_ENABLED_ && _PS_CACHING_SYSTEM_ == 'CacheMemcache') {
+                    if ($caching_system == 'CacheMemcache' && !_PS_CACHE_ENABLED_ && _PS_CACHING_SYSTEM_ == 'CacheMemcache') {
                         Cache::getInstance()->flush();
                     } elseif ($caching_system == 'CacheMemcached' && !_PS_CACHE_ENABLED_ && _PS_CACHING_SYSTEM_ == 'CacheMemcached') {
                         Cache::getInstance()->flush();
@@ -1001,13 +867,13 @@ class AdminPerformanceControllerCore extends AdminController
                 if (!count($this->errors)) {
                     $config['parameters']['ps_cache_enable'] = $cache_active;
                     // If there is not settings file modification or if the backup and replacement of the settings file worked
-                    if (file_put_contents(_PS_ROOT_DIR_.'/app/config/parameters.yml', Yaml::dump($config))) {
+                    if ($exportPhpConfigFile($config, $phpParametersFilepath)) {
                         if (function_exists('opcache_invalidate')) {
-                            opcache_invalidate(_PS_ROOT_DIR_.'/app/config/parameters.yml');
+                            opcache_invalidate($phpParametersFilepath);
                         }
                         $redirectAdmin = true;
                     } else {
-                        $this->errors[] = $this->trans('The settings file cannot be overwritten.', array(), 'Admin.Parameters.Notification');
+                        $this->errors[] = $this->trans('The settings file cannot be overwritten.', array(), 'Admin.AdvParameters.Notification');
                     }
                 }
             } else {
@@ -1043,7 +909,7 @@ class AdminPerformanceControllerCore extends AdminController
             if (!empty($debug_mode_status)) {
                 switch ($debug_mode_status) {
                     case self::DEBUG_MODE_ERROR_COULD_NOT_BACKUP:
-                        $this->errors[] = Tools::displayError(sprintf($this->l('Error: could not write to file: %s. Make sure that the file or directory is writable.'), _PS_ROOT_DIR_.'/config/defines.old.php'));
+                        $this->errors[] = Tools::displayError(sprintf($this->l('Error: could not write to file. Make sure that the correct permissions are set on the file %s'), _PS_ROOT_DIR_.'/config/defines.old.php'));
                         break;
                     case self::DEBUG_MODE_ERROR_NO_DEFINITION_FOUND:
                         $this->errors[] = Tools::displayError(sprintf($this->l('Error: could not find whether debug mode is enabled. Make sure that the correct permissions are set on the file %s'), _PS_ROOT_DIR_.'/config/defines.inc.php'));

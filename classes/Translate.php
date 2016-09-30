@@ -33,11 +33,6 @@ class TranslateCore
     {
         global $_LANG;
 
-        $iso = Context::getContext()->language->iso_code;
-        if (empty($iso)) {
-            $iso = Language::getIsoById((int)Configuration::get('PS_LANG_DEFAULT'));
-        }
-
         $string = preg_replace("/\\\*'/", "\'", $string);
         $key = $class.'_'.md5($string);
 
@@ -109,7 +104,7 @@ class TranslateCore
         }
         $str = str_replace('"', '&quot;', $str);
 
-        if ($sprintf !== null) {
+        if ($sprintf !== null && (!is_array($sprintf) || !empty($sprintf))) {
             $str = Translate::checkAndReplaceArgs($str, $sprintf);
         }
 
@@ -138,7 +133,6 @@ class TranslateCore
         } elseif (isset($lang_array['AdminTab'.$key])) {
             $str = $lang_array['AdminTab'.$key];
         } else {
-            // note in 1.5, some translations has moved from AdminXX to helper/*.tpl
             $str = $string;
         }
 
@@ -180,9 +174,6 @@ class TranslateCore
                 if (file_exists($file)) {
                     include_once($file);
                     $_MODULES = !empty($_MODULES) ? $_MODULES + $_MODULE : $_MODULE; //we use "+" instead of array_merge() because array merge erase existing values.
-                } else {
-                    // create an empty file
-                    @touch($file);
                 }
             }
             $translations_merged[$name] = true;

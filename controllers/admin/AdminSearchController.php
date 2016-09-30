@@ -153,7 +153,7 @@ class AdminSearchControllerCore extends AdminController
     public function searchIP()
     {
         if (!ip2long(trim($this->query))) {
-            $this->errors[] = $this->trans('This is not a valid IP address:', array(), 'Admin.Parameters.Notification').' '.Tools::htmlentitiesUTF8($this->query);
+            $this->errors[] = $this->trans('This is not a valid IP address:', array(), 'Admin.ShopParameters.Notification').' '.Tools::htmlentitiesUTF8($this->query);
             return;
         }
         $this->_list['customers'] = Customer::searchByIp($this->query);
@@ -234,14 +234,6 @@ class AdminSearchControllerCore extends AdminController
                 $key_match[strtolower($row['class_name'])] = $row['class_name'];
             }
         }
-        foreach (AdminTab::$tabParenting as $key => $value) {
-            $value = stripslashes($value);
-            if (!isset($tabs[strtolower($key)]) || !isset($tabs[strtolower($value)])) {
-                continue;
-            }
-            $tabs[strtolower($key)] = $tabs[strtolower($value)];
-            $key_match[strtolower($key)] = $key;
-        }
 
         $this->_list['features'] = array();
         foreach ($_LANGADM as $key => $value) {
@@ -291,6 +283,7 @@ class AdminSearchControllerCore extends AdminController
             'firstname' => array('title' => $this->l('First Name'), 'align' => 'left', 'width' => 150),
             'lastname' => array('title' => $this->trans('Name', array(), 'Admin.Global'), 'align' => 'left', 'width' => 'auto'),
             'email' => array('title' => $this->l('Email address'), 'align' => 'left', 'width' => 250),
+            'company' => array('title' => $this->l('Company'), 'align' => 'left', 'width' => 150),
             'birthday' => array('title' => $this->l('Birth date'), 'align' => 'center', 'type' => 'date', 'width' => 75),
             'date_add' => array('title' => $this->l('Registration date'), 'align' => 'center', 'type' => 'date', 'width' => 75),
             'orders' => array('title' => $this->l('Orders'), 'align' => 'center', 'width' => 50),

@@ -126,7 +126,7 @@
 							<ul class="dropdown-menu">
 								{foreach $quick_access as $quick}
 									<li {if $link->matchQuickLink({$quick.link})}{assign "matchQuickLink" $quick.id_quick_access}class="active"{/if}>
-										<a href="{$baseAdminUrl}{$quick.link|escape:'html':'UTF-8'}"{if $quick.new_window} class="_blank"{/if}>
+										<a href="{$quick.link|escape:'html':'UTF-8'}"{if $quick.new_window} class="_blank"{/if}>
 											{if isset($quick.icon)}
 												<i class="icon-{$quick.icon} icon-fw"></i>
 											{else}
@@ -242,57 +242,79 @@
 				</ul>
 
 				{* Notifications *}
-				<ul class="header-list navbar-right">
-					<li id="notification" class="dropdown">
-						<a href="javascript:void(0);" class="notification dropdown-toggle notifs">
-							<i class="material-icons">notifications_none</i>
-							<span id="total_notif_number_wrapper" class="notifs_badge hide">
-								<span id="total_notif_value">0</span>
-							</span>
-						</a>
-						<div class="dropdown-menu notifs_dropdown">
-              <div class="notifications">
-                <ul class="nav nav-tabs" role="tablist">
-                  <li class="nav-item active">
-                    <a class="nav-link" data-toggle="tab" data-type="order" href="#orders-notifications" role="tab" id="orders-tab">{l s='Orders'}<span id="orders_notif_value"></span></a>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" data-type="customer" href="#customers-notifications" role="tab" id="customers-tab">{l s='Customers'}<span id="customers_notif_value"></span></a>
-                  </li>
-                  <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" data-type="customer_message" href="#messages-notifications" role="tab" id="messages-tab">{l s='Messages'}<span id="customer_messages_notif_value"></span></a>
-                  </li>
-                </ul>
+        {if $show_new_orders || $show_new_customers || $show_new_messages}
+          <ul class="header-list navbar-right">
+            <li id="notification" class="dropdown">
+              <a href="javascript:void(0);" class="notification dropdown-toggle notifs">
+                <i class="material-icons">notifications_none</i>
+                <span id="total_notif_number_wrapper" class="notifs_badge hide">
+                  <span id="total_notif_value">0</span>
+                </span>
+              </a>
+              <div class="dropdown-menu notifs_dropdown">
+                <div class="notifications">
+                  <ul class="nav nav-tabs" role="tablist">
+                    {$active = "active"}
+                    {if $show_new_orders}
+                      <li class="nav-item {$active}">
+                        <a class="nav-link" data-toggle="tab" data-type="order" href="#orders-notifications" role="tab" id="orders-tab">{l s='Orders'}<span id="orders_notif_value"></span></a>
+                      </li>
+                      {$active = ""}
+                    {/if}
+                    {if $show_new_customers}
+                      <li class="nav-item {$active}">
+                        <a class="nav-link" data-toggle="tab" data-type="customer" href="#customers-notifications" role="tab" id="customers-tab">{l s='Customers'}<span id="customers_notif_value"></span></a>
+                      </li>
+                      {$active = ""}
+                    {/if}
+                    {if $show_new_messages}
+                      <li class="nav-item {$active}">
+                        <a class="nav-link" data-toggle="tab" data-type="customer_message" href="#messages-notifications" role="tab" id="messages-tab">{l s='Messages'}<span id="customer_messages_notif_value"></span></a>
+                      </li>
+                      {$active = ""}
+                    {/if}
+                  </ul>
 
-                <!-- Tab panes -->
-                <div class="tab-content">
-                  <div class="tab-pane active empty" id="orders-notifications" role="tabpanel">
-                    <p class="no-notification">
-                      {l s='No new order for now :('}<br>
-                      {l s='Have you checked your [1][2]abandonned carts[/2][/1]?' tags=['<strong>', '<a href="'|cat:$abandoned_cart_url|cat:'">']}<br>
-                      {$no_order_tip}
-                    </p>
-                    <div class="notification-elements"></div>
-                  </div>
-                  <div class="tab-pane empty" id="customers-notifications" role="tabpanel">
-                    <p class="no-notification">
-                      {l s='No new customer for now :('}<br>
-                      {$no_customer_tip}
-                    </p>
-                    <div class="notification-elements"></div>
-                  </div>
-                  <div class="tab-pane empty" id="messages-notifications" role="tabpanel">
-                    <p class="no-notification">
-                      {l s='No new message for now.'}<br>
-                      {$no_customer_message_tip}
-                    </p>
-                    <div class="notification-elements"></div>
+                  <!-- Tab panes -->
+                  <div class="tab-content">
+                    {$active = "active"}
+                    {if $show_new_orders}
+                      <div class="tab-pane {$active} empty" id="orders-notifications" role="tabpanel">
+                        <p class="no-notification">
+                          {l s='No new order for now :('}<br>
+                          {l s='Have you checked your [1][2]abandonned carts[/2][/1]?' html=true sprintf=['[1]' => '<strong>', '[/1]' => '</strong>', '[2]' => '<a href="'|cat:$abandoned_cart_url|cat:'">', '[/2]' => '</a>']}<br>
+                          {$no_order_tip}
+                        </p>
+                        <div class="notification-elements"></div>
+                      </div>
+                      {$active = ""}
+                    {/if}
+                    {if $show_new_customers}
+                      <div class="tab-pane {$active} empty" id="customers-notifications" role="tabpanel">
+                        <p class="no-notification">
+                          {l s='No new customer for now :('}<br>
+                          {$no_customer_tip}
+                        </p>
+                        <div class="notification-elements"></div>
+                      </div>
+                      {$active = ""}
+                    {/if}
+                    {if $show_new_messages}
+                      <div class="tab-pane {$active} empty" id="messages-notifications" role="tabpanel">
+                        <p class="no-notification">
+                          {l s='No new message for now.'}<br>
+                          {$no_customer_message_tip}
+                        </p>
+                        <div class="notification-elements"></div>
+                      </div>
+                      {$active = ""}
+                    {/if}
                   </div>
                 </div>
               </div>
-						</div>
-					</li>
-				</ul>
+            </li>
+          </ul>
+        {/if}
 
 				{* Shop name *}
 				{if {$base_url}}
@@ -302,14 +324,14 @@
                 <span class="shop-state" id="debug-mode">
                   <i class="material-icons">bug_report</i>
                   <span class="label-tooltip" data-toggle="tooltip" data-placement="bottom" data-html="true"
-                    title="<p class='text-left text-nowrap'><strong>{l s='Your shop is in debug mode.'}</strong></p><p class='text-left'>{l s='All the PHP errors and messages are displayed. When you no longer need it, [1]turn off[/1] this mode.' sprintf=['[1]' => '<strong>', '[/1]' => '</strong>']}</p>">{l s='Debug mode'}</span>
+                    title="<p class='text-left text-nowrap'><strong>{l s='Your shop is in debug mode.'}</strong></p><p class='text-left'>{l s='All the PHP errors and messages are displayed. When you no longer need it, [1]turn off[/1] this mode.' html=true sprintf=['[1]' => '<strong>', '[/1]' => '</strong>']}</p>">{l s='Debug mode'}</span>
                 </span>
               {/if}
               {if isset($maintenance_mode) && $maintenance_mode == true}
                 <span class="shop-state" id="maintenance-mode">
                   <i class="material-icons">build</i>
                     <a class="label-tooltip" data-toggle="tooltip" data-placement="bottom" data-html="true"
-                    title="<p class='text-left text-nowrap'><strong>{l s='Your shop is in maintenance.'}</strong></p><p class='text-left'>{l s='Your visitors and customers cannot access your shop while in maintenance mode.%s To manage the maintenance settings, go to Preferences > Maintenance.' sprintf='<br />'}</p>" href="{$link->getAdminLink('AdminMaintenance')|escape:'html':'UTF-8'}">{l s='Maintenance mode'}
+                    title="<p class='text-left text-nowrap'><strong>{l s='Your shop is in maintenance.'}</strong></p><p class='text-left'>{l s='Your visitors and customers cannot access your shop while in maintenance mode.%s To manage the maintenance settings, go to Preferences > Maintenance.' sprintf=['<br />']}</p>" href="{$link->getAdminLink('AdminMaintenance')|escape:'html':'UTF-8'}">{l s='Maintenance mode'}
                     </a>
                 </span>
               {/if}

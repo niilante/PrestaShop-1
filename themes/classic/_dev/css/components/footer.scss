@@ -64,6 +64,8 @@
     background-color: $brand-primary;
   }
   a {
+    display: block;
+    height: 100%;
     white-space: nowrap;
     text-indent: 100%;
     overflow: hidden;
@@ -185,12 +187,11 @@
         padding: rem(10px);
         border-bottom: 1px solid $gray-lighter;
         cursor: pointer;
+        .collapse-icons .remove {
+          display: none;
+        }
       }
-      .navbar-toggler {
-        display: inline-block;
-        padding: 0;
-      }
-      .collapse-icons[aria-expanded="true"] {
+      .title[aria-expanded="true"] .collapse-icons {
         .add {
           display: none;
         }
@@ -198,8 +199,9 @@
           display: block;
         }
       }
-      .collapse-icons .remove {
-        display: none;
+      .navbar-toggler {
+        display: inline-block;
+        padding: 0;
       }
       .collapse {
         display: none;

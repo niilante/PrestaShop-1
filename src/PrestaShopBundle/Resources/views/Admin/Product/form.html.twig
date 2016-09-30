@@ -24,12 +24,14 @@
             <span class="help-box pull-xs-right" data-toggle="popover"
               data-content="{{ "Is the product a pack (a combination of at least two existing products), a virtual product (downloadable file, service, etc.), or simply a standard, physical product?"|trans({}, 'Admin.Catalog.Help') }}"></span>
           </div>
-          <div class="col-md-1 form_switch_language {{ languages|length == 1 ? 'hide' : '' }}">
-            <select id="form_switch_language" class="form-control" data-toggle="select2">
-              {% for language in languages %}
-                <option value="{{ language.iso_code }}" {% if default_language_iso == language.iso_code %}selected="selected"{% endif %}>{{ language.iso_code }}</option>
-              {% endfor %}
-            </select>
+          <div class="col-md-1 form_switch_language">
+            <div class="{{ languages|length == 1 ? 'hide' : '' }}">
+              <select id="form_switch_language" class="form-control" data-toggle="select2">
+                {% for language in languages %}
+                  <option value="{{ language.iso_code }}" {% if default_language_iso == language.iso_code %}selected="selected"{% endif %}>{{ language.iso_code }}</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
           <div class="toolbar col-lg-2 text-md-right">
             <a class="toolbar-button btn-sales" href="{{ stats_link }}" target="_blank" title="{{ 'Sales'|trans({}, 'Admin.Global') }}"
@@ -118,7 +120,11 @@
                     </div>
 
                     <div id="product-images-container" class="m-b-2">
-                      <div id="product-images-dropzone" class="panel dropzone ui-sortable col-md-12" url-upload="{{ path('admin_product_image_upload') }}" url-position="{{ path('admin_product_image_positions') }}" url-update="{{ path('admin_product_image_form') }}" url-delete="{{ path('admin_product_image_delete') }}" data-max-size="{{ 'PS_ATTACHMENT_MAXIMUM_SIZE'|configuration }}">
+                      <div id="product-images-dropzone" class="panel dropzone ui-sortable col-md-12"
+                           url-upload="{{ path('admin_product_image_upload', {'idProduct': id_product}) }}"
+                           url-position="{{ path('admin_product_image_positions') }}"
+                           data-max-size="{{ 'PS_ATTACHMENT_MAXIMUM_SIZE'|configuration }}"
+                      >
                         <div id="product-images-dropzone-error" class="text-danger"></div>
                         <div class="dz-default dz-message openfilemanager">
                             <i class="material-icons">add_a_photo</i><br/>
@@ -134,7 +140,11 @@
                               <div><span>+</span></div>
                             </div>
                           {% for image in form.step1.vars.value.images %}
-                            <div class="dz-preview dz-processing dz-image-preview dz-complete ui-sortable-handle" data-id="{{ image.id }}">
+                            <div class="dz-preview dz-processing dz-image-preview dz-complete ui-sortable-handle"
+                                 data-id="{{ image.id }}"
+                                 url-delete="{{ path('admin_product_image_delete', {'idImage': image.id}) }}"
+                                 url-update="{{ path('admin_product_image_form', {'idImage': image.id}) }}"
+                            >
                               <div class="dz-image bg" style="background-image: url('{{ image.base_image_url }}-home_default.{{ image.format }}');"></div>
                               <div class="dz-details">
                                 <div class="dz-size"><span data-dz-size=""></span></div>
@@ -162,8 +172,8 @@
                     </div>
 
                     <ul class="nav nav-tabs bordered">
-                      <li id="tab_description_short" class="nav-item"><a href="#description_short" data-toggle="tab" class="nav-link active">{{ 'Summary'|trans({}, 'Admin.Catalog.Feature') }}</a></li>
-                      <li id="tab_description" class="nav-item"><a href="#description" data-toggle="tab" class="nav-link">{{ 'Description'|trans({}, 'Admin.Global') }}</a></li>
+                      <li id="tab_description_short" class="nav-item"><a href="#description_short" data-toggle="tab" class="nav-link description-tab active">{{ 'Summary'|trans({}, 'Admin.Catalog.Feature') }}</a></li>
+                      <li id="tab_description" class="nav-item"><a href="#description" data-toggle="tab" class="nav-link description-tab">{{ 'Description'|trans({}, 'Admin.Global') }}</a></li>
                     </ul>
 
                     <div class="tab-content bordered">
@@ -213,63 +223,67 @@
                       <div class="row">
                         <div class="col-md-12">
 
-                          <div class="form-group" id="show_variations_selector">
-                            <h2>
-                              {{ "Combinations"|trans({}, 'Admin.Catalog.Feature') }}
-                              <span class="help-box" data-toggle="popover"
-                                data-content="{{ "Combinations are the different variations of a product, with attributes like its size, weight or color taking different values. Does your product require combinations?"|trans({}, 'Admin.Catalog.Help') }}" ></span>
-                            </h2>
-                            <div class="radio">
-                              <label>
-                                <input type="radio" name="show_variations" value="0" {% if not has_combinations %}checked="checked"{% endif %}>
-                                {{ "Simple product"|trans({}, 'Admin.Catalog.Feature') }}
-                              </label>
-                            </div>
-                            <div class="radio">
-                              <label>
-                                <input type="radio" name="show_variations" value="1" {% if has_combinations %}checked="checked"{% endif %}>
-                                {{ "Product with combinations"|trans({}, 'Admin.Catalog.Feature') }}
-                              </label>
-                              <div id="product_type_combinations_shortcut">
-                                <span class="small font-secondary">
-                                  {# First tag [1][/1] is for a HTML link. Second tag [2] is an icon (no closing tag needed). #}
-                                  {{ "Advanced settings in [1][2]Combinations[/1]"|trans({}, 'Admin.Catalog.Help')|replace({'[1]': '<a href="#tab-step3" onclick="$(\'a[href=\\\'#step3\\\']\').tab(\'show\');" class="btn sensitive p-x-0">', '[/1]': '</a>', '[2]': '<i class="material-icons">open_in_new</i>'})|raw }}
-                                </span>
+                          {% if is_combination_active %}
+                            <div class="form-group" id="show_variations_selector">
+                              <h2>
+                                {{ "Combinations"|trans({}, 'Admin.Catalog.Feature') }}
+                                <span class="help-box" data-toggle="popover"
+                                  data-content="{{ "Combinations are the different variations of a product, with attributes like its size, weight or color taking different values. Does your product require combinations?"|trans({}, 'Admin.Catalog.Help') }}" ></span>
+                              </h2>
+                              <div class="radio">
+                                <label>
+                                  <input type="radio" name="show_variations" value="0" {% if not has_combinations %}checked="checked"{% endif %}>
+                                  {{ "Simple product"|trans({}, 'Admin.Catalog.Feature') }}
+                                </label>
+                              </div>
+                              <div class="radio">
+                                <label>
+                                  <input type="radio" name="show_variations" value="1" {% if has_combinations %}checked="checked"{% endif %}>
+                                  {{ "Product with combinations"|trans({}, 'Admin.Catalog.Feature') }}
+                                </label>
+                                <div id="product_type_combinations_shortcut">
+                                  <span class="small font-secondary">
+                                    {# First tag [1][/1] is for a HTML link. Second tag [2] is an icon (no closing tag needed). #}
+                                    {{ "Advanced settings in [1][2]Combinations[/1]"|trans({}, 'Admin.Catalog.Help')|replace({'[1]': '<a href="#tab-step3" onclick="$(\'a[href=\\\'#step3\\\']\').tab(\'show\');" class="btn sensitive p-x-0">', '[/1]': '</a>', '[2]': '<i class="material-icons">open_in_new</i>'})|raw }}
+                                  </span>
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          {% endif %}
 
                           <div class="form-group">
                             <h2>
                               {{ "Reference"|trans({}, 'Admin.Catalog.Feature') }}
                               <span class="help-box" data-toggle="popover"
                                 data-content="{{ "Your internal reference code for this product. Allowed special characters: .-_#\."|trans({}, 'Admin.Catalog.Help') }}" ></span>
-                            </2>
+                            </h2>
                             {{ form_errors(form.step6.reference) }}
                             <div class="row">
-                              <div class="col-md-6" id="product_reference_field">
+                              <div class="col-xl-12 col-lg-12" id="product_reference_field">
                                   {{ form_widget(form.step6.reference) }}
                               </div>
                             </div>
                           </div>
 
-                          <div class="form-group" id="product_qty_0_shortcut_div">
-                            <h2>
-                              {{ "Quantity"|trans({}, 'Admin.Catalog.Feature') }}
-                              <span class="help-box" data-toggle="popover"
-                                data-content="{{ "How many products should be available for sale?"|trans({}, 'Admin.Catalog.Help') }}" ></span>
-                            </h2>
-                            {{ form_errors(form.step1.qty_0_shortcut) }}
-                            <div class="row">
-                              <div class="col-md-6">
-                                {{ form_widget(form.step1.qty_0_shortcut) }}
+                          {% if 'PS_STOCK_MANAGEMENT'|configuration %}
+                            <div class="form-group" id="product_qty_0_shortcut_div">
+                              <h2>
+                                {{ "Quantity"|trans({}, 'Admin.Catalog.Feature') }}
+                                <span class="help-box" data-toggle="popover"
+                                  data-content="{{ "How many products should be available for sale?"|trans({}, 'Admin.Catalog.Help') }}" ></span>
+                              </h2>
+                              {{ form_errors(form.step1.qty_0_shortcut) }}
+                              <div class="row">
+                                <div class="col-xl-6 col-lg-12">
+                                  {{ form_widget(form.step1.qty_0_shortcut) }}
+                                </div>
                               </div>
+                              <span class="small font-secondary">
+                                {# First tag [1][/1] is for a HTML link. Second tag [2] is an icon (no closing tag needed). #}
+                                {{ "Advanced settings in [1][2]Quantities[/1]"|trans({}, 'Admin.Catalog.Help')|replace({'[1]': '<a href="#tab-step3" onclick="$(\'a[href=\\\'#step3\\\']\').tab(\'show\');" class="btn sensitive p-x-0">', '[/1]': '</a>', '[2]': '<i class="material-icons">open_in_new</i>'})|raw }}
+                              </span>
                             </div>
-                            <span class="small font-secondary">
-                              {# First tag [1][/1] is for a HTML link. Second tag [2] is an icon (no closing tag needed). #}
-                              {{ "Advanced settings in [1][2]Quantities[/1]"|trans({}, 'Admin.Catalog.Help')|replace({'[1]': '<a href="#tab-step3" onclick="$(\'a[href=\\\'#step3\\\']\').tab(\'show\');" class="btn sensitive p-x-0">', '[/1]': '</a>', '[2]': '<i class="material-icons">open_in_new</i>'})|raw }}
-                            </span>
-                          </div>
+                          {% endif %}
 
                           <div class="form-group">
                             <h2>
@@ -335,11 +349,13 @@
                       <h2>{{ 'Quantities'|trans({}, 'Admin.Catalog.Feature') }}</h2>
                       <fieldset class="form-group">
                         <div class="row">
-                          <div class="col-md-4">
-                            <label class="form-control-label">{{ form.step3.qty_0.vars.label }}</label>
-                            {{ form_errors(form.step3.qty_0) }}
-                            {{ form_widget(form.step3.qty_0) }}
-                          </div>
+                          {% if 'PS_STOCK_MANAGEMENT'|configuration %}
+                            <div class="col-md-4">
+                              <label class="form-control-label">{{ form.step3.qty_0.vars.label }}</label>
+                              {{ form_errors(form.step3.qty_0) }}
+                              {{ form_widget(form.step3.qty_0) }}
+                            </div>
+                          {% endif %}
                           <div class="col-md-4">
                             <label class="form-control-label">{{ form.step3.minimal_quantity.vars.label }}</label>
                             <span class="help-box" data-toggle="popover"
@@ -351,7 +367,7 @@
                       </fieldset>
                     </div>
 
-                    <div id="virtual_product" data-action="{{ path('admin_product_virtual_save_action') }}" data-action-remove="{{ path('admin_product_virtual_remove_action') }}">
+                    <div id="virtual_product" data-action="{{ path('admin_product_virtual_save_action', { 'idProduct': 1 }) }}" data-action-remove="{{ path('admin_product_virtual_remove_action', {'idProduct': 1}) }}">
 
                       <div class="row">
                         <div class="col-md-4">
@@ -369,6 +385,8 @@
                         <div class="col-md-12">
                           <fieldset class="form-group">
                             <label class="form-control-label">{{ form.step3.virtual_product.file.vars.label }}</label>
+                            <span class="help-box" data-toggle="popover"
+                                  data-content="{{ "Upload a file from your computer (%maxUploadSize% max.)"|trans({'%maxUploadSize%': max_upload_size}, 'Admin.Catalog.Help') }}" ></span>
                             <div id="form_step3_virtual_product_file_input" class="{{ form.step3.virtual_product.vars.value.filename is defined ? 'hide' : 'show' }}">
                               {{ form_widget(form.step3.virtual_product.file) }}
                             </div>
@@ -381,6 +399,8 @@
                         <div class="col-md-6">
                           <fieldset class="form-group">
                             <label class="form-control-label">{{ form.step3.virtual_product.name.vars.label }}</label>
+                            <span class="help-box" data-toggle="popover"
+                                  data-content="{{ "The full filename with its extension (e.g. Book.pdf)"|trans({}, 'Admin.Catalog.Help') }}" ></span>
                             {{ form_errors(form.step3.virtual_product.name) }}
                             {{ form_widget(form.step3.virtual_product.name) }}
                           </fieldset>
@@ -388,6 +408,8 @@
                         <div class="col-md-6">
                           <fieldset class="form-group">
                             <label class="form-control-label">{{ form.step3.virtual_product.nb_downloadable.vars.label }}</label>
+                            <span class="help-box" data-toggle="popover"
+                                  data-content="{{ "Number of downloads allowed per customer. Set to 0 for unlimited downloads."|trans({}, 'Admin.Catalog.Help') }}" ></span>
                             {{ form_errors(form.step3.virtual_product.nb_downloadable) }}
                             {{ form_widget(form.step3.virtual_product.nb_downloadable) }}
                           </fieldset>
@@ -395,6 +417,8 @@
                         <div class="col-md-6">
                           <fieldset class="form-group">
                             <label class="form-control-label">{{ form.step3.virtual_product.expiration_date.vars.label }}</label>
+                            <span class="help-box" data-toggle="popover"
+                                  data-content="{{ "If set, the file will not be downloadable after this date. Leave blank if you do not wish to attach an expiration date."|trans({}, 'Admin.Catalog.Help') }}" ></span>
                             {{ form_errors(form.step3.virtual_product.expiration_date) }}
                             {{ form_widget(form.step3.virtual_product.expiration_date) }}
                           </fieldset>
@@ -402,6 +426,8 @@
                         <div class="col-md-6">
                           <fieldset class="form-group">
                             <label class="form-control-label">{{ form.step3.virtual_product.nb_days.vars.label }}</label>
+                            <span class="help-box" data-toggle="popover"
+                                  data-content="{{ "Number of days this file can be accessed by customers. Set to zero for unlimited access."|trans({}, 'Admin.Catalog.Help') }}" ></span>
                             {{ form_errors(form.step3.virtual_product.nb_days) }}
                             {{ form_widget(form.step3.virtual_product.nb_days) }}
                           </fieldset>
@@ -431,17 +457,17 @@
                         </div>
                       </div>
                     {% endif %}
-
-                    <div id="pack_stock_type">
-                      <h2>{{ form.step3.pack_stock_type.vars.label }}</h2>
-                      <div class="row col-md-4">
-                        <fieldset class="form-group">
-                          {{ form_errors(form.step3.pack_stock_type) }}
-                          {{ form_widget(form.step3.pack_stock_type) }}
-                        </fieldset>
+                    {% if 'PS_STOCK_MANAGEMENT'|configuration %}
+                      <div id="pack_stock_type">
+                        <h2>{{ form.step3.pack_stock_type.vars.label }}</h2>
+                        <div class="row col-md-4">
+                          <fieldset class="form-group">
+                            {{ form_errors(form.step3.pack_stock_type) }}
+                            {{ form_widget(form.step3.pack_stock_type) }}
+                          </fieldset>
+                        </div>
                       </div>
-                    </div>
-
+                    {% endif %}
                     {{ include('PrestaShopBundle:Admin/Product/Include:form_combinations.html.twig', {'form': form.step3, 'form_combination_bulk': formCombinations}) }}
 
                   </div>
@@ -541,7 +567,7 @@
                       </div>
                       <div class="col-md-12">
                         <div class="row">
-                          <div class="col-md-5">
+                          <div class="col-xl-5 col-lg-12">
                             <div class="alert alert-info" role="alert">
                               <i class="material-icons">help</i>
                               <p class="alert-text">
@@ -563,7 +589,7 @@
                             data-content="{{ "The cost price is the price you paid for the product. Do not include the tax. It should be lower than the retail price: the difference between the two will be your margin."|trans({}, 'Admin.Catalog.Help') }}" ></span>
                         </h2>
                       </div>
-                      <div class="col-md-2 form-group">
+                      <div class="col-xl-2 col-lg-3 form-group">
                         <label class="form-control-label">{{ form.step2.wholesale_price.vars.label|raw }}</label>
                         {{ form_errors(form.step2.wholesale_price) }}
                         {{ form_widget(form.step2.wholesale_price) }}
@@ -586,7 +612,7 @@
                             <i class="material-icons">add_circle</i>
                             {{ 'Add a specific price'|trans({}, 'Admin.Catalog.Feature') }}
                           </a>
-                          <table id="js-specific-price-list" class="table table-striped hide seo-table" data="{{ path('admin_specific_price_list') }}" data-action-delete="{{ path('admin_delete_specific_price') }}">
+                          <table id="js-specific-price-list" class="table table-striped hide seo-table" data="{{ path('admin_specific_price_list', { 'idProduct': 1 }) }}" data-action-delete="{{ path('admin_delete_specific_price', { 'idSpecificPrice': 1 }) }}">
                             <thead>
                             <tr>
                               <th>{{ 'Rule'|trans({}, 'Admin.Catalog.Feature') }}</th>
@@ -703,10 +729,10 @@
                       <div class="col-md-7 form-group">
                           {{ form_errors(form.step6.display_options) }}
                           <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-4 js-available-for-order">
                               {{ form_widget(form.step6.display_options.available_for_order) }}
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 js-show-price">
                               {{ form_widget(form.step6.display_options.show_price) }}
                             </div>
                             <div class="col-md-5">
@@ -817,66 +843,49 @@
                     <div class="row">
                       <div class="col-md-8">
                         <h2>{{ 'Attached files'|trans({}, 'Admin.Catalog.Feature') }}</h2>
+                        <p class="subtitle">{{ 'Add files that customers can download directly on the product page (instructions, manual, recipe, etc.).'|trans({}, 'Admin.Catalog.Feature') }}</p>
                         {{ form_widget(form.step6.attachments) }}
                       </div>
                     </div>
                     <div class="row">
                       <div class="col-md-8">
-                        <h2>{{ 'Attach a new file'|trans({}, 'Admin.Catalog.Feature') }}</h2>
-                        <fieldset class="form-group">
+                        <a
+                          class="btn btn-action add m-b-1"
+                          href="#collapsedForm"
+                          data-toggle="collapse"
+                          aria-expanded="false"
+                          aria-controls="collapsedForm"
+                        >
+                          <i class="material-icons">add_circle</i>
+                          {{ 'Attach a new file'|trans({}, 'Admin.Catalog.Feature') }}
+                        </a>
+                        <fieldset class="form-group collapse" id="collapsedForm">
                           {{ form_errors(form.step6.attachment_product) }}
                           <div id="form_step6_attachment_product" data-action="{{ form.step6.attachment_product.vars.attr['data-action'] }}">
                             <div class="form-group">{{ form_widget(form.step6.attachment_product.file) }}</div>
                             <div class="form-group">{{ form_widget(form.step6.attachment_product.name) }}</div>
                             <div class="form-group">{{ form_widget(form.step6.attachment_product.description) }}</div>
-                            <div class="form-group">{{ form_widget(form.step6.attachment_product.add) }}</div>
+                            <div class="form-group">
+                              {{ form_widget(form.step6.attachment_product.add) }}
+                              {{ form_widget(form.step6.attachment_product.cancel) }}
+                            </div>
                           </div>
                         </fieldset>
                       </div>
                     </div>
+
                     <div class="row">
-                      <div class="col-md-8">
-                        <div id="custom_fields">
-                          <h2>{{ form.step6.suppliers.vars.label }}</h2>
-                          <div class="row">
-                            <div class="col-md-12">
-                              <div class="alert alert-info alert-drop" role="alert">
-                                <i class="material-icons">help</i>
-                                <p class="alert-text">
-                                  {{ 'This interface allows you to specify the suppliers of the current product and its combinations, if any.'|trans({}, 'Admin.Catalog.Help')|raw }}<br>
-                                  {{ 'You can specify supplier references according to previously associated suppliers.'|trans({}, 'Admin.Catalog.Help')|raw }}
-                                  <strong>{{ 'Read more'|trans({}, 'Admin.Actions')|raw }}</strong>
-                                </p>
-                              </div>
-                              <div class="alert alert-info alert-down" role="alert">
-                                <p class="alert-down-text">
-                                  {{ 'When using the advanced stock management tool (see Shop Parameters > Products settings), the values you define (price, references) will be used in supply orders.'|trans({}, 'Admin.Catalog.Help')|raw }}
-                                </p>
-                              </div>
-                            </div>
-                            {{ form_errors(form.step6.suppliers) }}
-                            <div class="col-md-4">
-                              <fieldset class="form-group">
-                                <label>{{ 'Choose the suppliers associated with this product'|trans({}, 'Admin.Catalog.Feature') }}</label>
-                                {{ form_widget(form.step6.suppliers) }}
-                              </fieldset>
-                            </div>
-                            <div class="col-md-4" id="default_supplier_list">
-                              <fieldset class="form-group">
-                                <label>{{ 'Default supplier'|trans({}, 'Admin.Catalog.Feature') }}</label>
-                                {{ form_widget(form.step6.default_supplier) }}
-                              </fieldset>
-                            </div>
-                          </div>
-                        </div>
+                      <div class="col-md-8" id="supplier_collection">
+                        {{ include('PrestaShopBundle:Admin:Product/Include/form-supplier-choice.html.twig', { 'form': form.step6 }) }}
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div id="supplier_combination_collection" class="col-md-12" data-url="{{ path('admin_supplier_refresh_product_supplier_combination_form', { 'idProduct': 1, 'supplierIds': 1}) }}">
+                        {{ include('PrestaShopBundle:Admin:Product/Include/form-supplier-combination.html.twig', { 'suppliers': form.step6.suppliers.vars.value, 'form': form.step6 }) }}
                       </div>
                     </div>
 
-                    <div id="supplier_combination_collection" class="col-md-8" data-url="{{ path('admin_supplier_refresh_product_supplier_combination_form') }}">
-                      {{ include('PrestaShopBundle:Admin:Product/Include/form-supplier-combination.html.twig', { 'suppliers': form.step6.suppliers.vars.value, 'form': form.step6 }) }}
-                    </div>
                   </div>
-
                 </div>
               </div>
             </div>
@@ -969,7 +978,7 @@
         />
 
       </div>
-      <div class="col-lg-7 text-lg-right">
+      <div class="col-lg-6 text-lg-right">
         <button
           type="button"
           class="btn btn-tertiary-outline btn-submit hidden-xs uppercase duplicate"
@@ -1009,35 +1018,42 @@
           title="{{ 'Save the product and stay on the current page: CTRL+S'|trans({}, 'Admin.Catalog.Help') }}"
           />
 
-          <div class="dropdown hide pull-right">
-           <button
-            class="btn btn-primary dropdown-toggle save"
-            type="submit"
-            id="dropdownMenu"
-            data-toggle="dropdown"
-            aria-expanded="false"
-            >
-             {{ 'Save'|trans({}, 'Admin.Actions') }}
-           </button>
-           <div class="dropdown-menu" aria-labelledby="dropdownMenu">
-             <button
-               class="dropdown-item duplicate"
-               data-redirect="{{ path('admin_product_unit_action', {action: 'duplicate', id: id_product}) }}?redirect_url={{ path('admin_product_catalog') }}"
+          <div class="btn-group hide dropdown pull-right">
+            <div class="js-spinner spinner hide btn-primary-reverse onclick pull-left m-r-1"></div>
+            <button
+             class="btn btn-primary js-btn-save"
+             type="submit"
              >
-             {{ 'Duplicate'|trans({}, 'Admin.Actions')|raw }}
-             </button>
-             <button
-                class="dropdown-item go-catalog"
-                data-redirect="{{ path('admin_product_catalog', {'offset': 'last', 'limit': 'last'}) }}"
+              <span>{{ 'Save'|trans({}, 'Admin.Actions') }}</span>
+            </button>
+            <button
+              class="btn btn-primary dropdown-toggle"
+              type="button"
+              id="dropdownMenu"
+              data-toggle="dropdown"
+              aria-expanded="false"
+            >
+
+            </button>
+            <div class="dropdown-menu" aria-labelledby="dropdownMenu">
+              <a
+               class="dropdown-item duplicate js-btn-save"
+               href="{{ path('admin_product_unit_action', {action: 'duplicate', id: id_product}) }}?redirect_url={{ path('admin_product_catalog') }}"
+              >
+              {{ 'Duplicate'|trans({}, 'Admin.Actions')|raw }}
+              </a>
+             <a
+              class="dropdown-item go-catalog js-btn-save"
+              href="{{ path('admin_product_catalog', {'offset': 'last', 'limit': 'last'}) }}"
               >
               {{ 'Go to catalog'|trans({}, 'Admin.Catalog.Feature')|raw }}
-            </button>
-             <button
-                class="dropdown-item new-product"
-                data-redirect="{{ path('admin_product_new') }}"
+             </a>
+             <a
+              class="dropdown-item new-product js-btn-save"
+              href="{{ path('admin_product_new') }}"
               >
               {{ 'Add new product'|trans({}, 'Admin.Catalog.Feature')|raw }}
-            </button>
+            </a>
           </div>
         </div>
       </div>
@@ -1052,12 +1068,13 @@
     'actions': [
       {
         'type': 'button',
-        'label': "Yes"|trans({}, 'Admin.Global'),
-        'class': 'btn btn-danger continue'
-      },{
-        'type': 'button',
         'label': "No"|trans({}, 'Admin.Global'),
-        'class': 'btn btn-default cancel'
+        'class': 'btn btn-tertiary-outline btn-lg cancel'
+      },
+      {
+        'type': 'button',
+        'label': "Yes"|trans({}, 'Admin.Global'),
+        'class': 'btn btn-primary btn-lg continue'
       }
     ],
   } %}

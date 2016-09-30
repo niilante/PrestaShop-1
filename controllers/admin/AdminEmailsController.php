@@ -275,10 +275,8 @@ class AdminEmailsControllerCore extends AdminController
      */
     public function initContent()
     {
-        $this->initTabModuleList();
-        $this->initToolbar();
-        $this->initPageHeaderToolbar();
         $this->addToolBarModulesListButton();
+
         unset($this->toolbar_btn['save']);
         $back = $this->context->link->getAdminLink('AdminDashboard');
 
@@ -291,10 +289,6 @@ class AdminEmailsControllerCore extends AdminController
 
         $this->context->smarty->assign(array(
             'content' => $this->content,
-            'url_post' => self::$currentIndex.'&token='.$this->token,
-            'show_page_header_toolbar' => $this->show_page_header_toolbar,
-            'page_header_toolbar_title' => $this->page_header_toolbar_title,
-            'page_header_toolbar_btn' => $this->page_header_toolbar_btn
         ));
 
         return parent::initContent();
@@ -316,7 +310,7 @@ class AdminEmailsControllerCore extends AdminController
 
         if (isset($_POST['PS_MAIL_METHOD']) && $_POST['PS_MAIL_METHOD'] == 2
             && (empty($_POST['PS_MAIL_SERVER']) || empty($_POST['PS_MAIL_SMTP_PORT']))) {
-            $this->errors[] = $this->trans('You must define an SMTP server and an SMTP port. If you do not know it, use the PHP mail() function instead.', array(), 'Admin.Parameters.Notification');
+            $this->errors[] = $this->trans('You must define an SMTP server and an SMTP port. If you do not know it, use the PHP mail() function instead.', array(), 'Admin.ShopParameters.Notification');
         }
     }
 

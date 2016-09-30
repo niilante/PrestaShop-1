@@ -39,6 +39,7 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Routing\Router;
 use Symfony\Component\Routing\Loader\YamlFileLoader;
+use Symfony\Component\Yaml\Yaml;
 use GuzzleHttp\Client;
 
 class ModuleManagerBuilder
@@ -60,6 +61,8 @@ class ModuleManagerBuilder
     public static $instance = null;
 
     /**
+     * @param null $baseUrl
+     *
      * @return ModuleManagerBuilder
      */
     static public function getInstance() {
@@ -124,12 +127,22 @@ class ModuleManagerBuilder
 
     private function __construct()
     {
+        $config = Yaml::parse(file_get_contents(_PS_ROOT_DIR_.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'config'.DIRECTORY_SEPARATOR.'config.yml'));
+        $clientConfig = $config['csa_guzzle']['clients']['addons_api']['config'];
+
         $marketPlaceClient = new ApiClient(
-            new Client(array()),
+            new Client($clientConfig),
             $this->getLanguageIso(),
             $this->getCountryIso(),
             _PS_VERSION_)
         ;
+
+        if (file_exists($this->getConfigDir().'/parameters.php')) {
+            $parameters = require($this->getConfigDir().'/parameters.php');
+            if (array_key_exists('addons.api_client.verify_ssl', $parameters['parameters'])) {
+                $marketPlaceClient->setSslVerification($parameters['parameters']['addons.api_client.verify_ssl']);
+            }
+        }
 
         self::$addonsDataProvider = new AddonsDataProvider($marketPlaceClient);
         self::$categoriesProvider = new CategoriesProvider($marketPlaceClient);
@@ -159,11 +172,16 @@ class ModuleManagerBuilder
     {
         // get the environment to load the good routing file
         $routeFileName = _PS_MODE_DEV_ === true ? 'routing_dev.yml' : 'routing.yml';
-        $routesDirectory = _PS_ROOT_DIR_.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'config';
+        $routesDirectory = $this->getConfigDir();
         $locator = new FileLocator(array($routesDirectory));
         $loader = new YamlFileLoader($locator);
 
         return new Router($loader, $routeFileName);
+    }
+
+    protected function getConfigDir()
+    {
+        return _PS_ROOT_DIR_.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'config';
     }
 
     /**
@@ -171,7 +189,8 @@ class ModuleManagerBuilder
      */
     private function getLanguageIso()
     {
-        $langId = Context::getContext()->employee instanceof \Employee ? Context::getContext()->employee->id_lang : Context::getContext()->language->iso_code;
+        $context = Context::getContext();
+        $langId = $context->employee instanceof \Employee ? $context->employee->id_lang : $context->language->id;
 
         return \LanguageCore::getIsoById($langId);
     }

@@ -89,8 +89,8 @@ class InstallModelInstall extends InstallAbstractModel
         }
 
         $secret = Tools::passwdGen(56);
-        $cookie_key = Tools::passwdGen(8);
-        $cookie_iv = Tools::passwdGen(56);
+        $cookie_key = defined('_COOKIE_KEY_')?_COOKIE_KEY_:Tools::passwdGen(56);
+        $cookie_iv = defined('_COOKIE_IV_')?_COOKIE_IV_:Tools::passwdGen(8);
         $database_port = null;
 
         $splits = preg_split('#:#', $database_host);
@@ -100,6 +100,8 @@ class InstallModelInstall extends InstallAbstractModel
             $database_port = array_pop($splits);
             $database_host = implode(':', $splits);
         }
+
+        $key = \Defuse\Crypto\Key::createNewRandomKey();
 
         $parameters  = array_replace_recursive(
             Yaml::parse(file_get_contents(_PS_ROOT_DIR_.'/app/config/parameters.yml.dist')),
@@ -114,20 +116,13 @@ class InstallModelInstall extends InstallAbstractModel
                     'database_engine' =>  $database_engine,
                     'cookie_key' => $cookie_key,
                     'cookie_iv' =>  $cookie_iv,
+                    'new_cookie_key' => $key->saveToAsciiSafeString(),
                     'ps_creation_date' => date('Y-m-d'),
                     'secret' => $secret,
-                    'locale' => $this->language->getLanguage()->getMetaInformation('locale')
+                    'locale' => $this->language->getLanguage()->getLocale(),
                 )
             )
         );
-
-        // If mcrypt is activated, add Rijndael 128 configuration
-        if (function_exists('mcrypt_encrypt')) {
-            if (!isset($config['parameters']['_rijndael_key'])) {
-                $parameters['parameters']['_rijndael_key'] = Tools::passwdGen(mcrypt_get_key_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_ECB));
-                $parameters['parameters']['_rijndael_iv'] = base64_encode(mcrypt_create_iv(mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_ECB), MCRYPT_RAND));
-            }
-        }
 
         $settings_content = "<?php\n";
         $settings_content .= "//@deprecated 1.7";
@@ -230,7 +225,7 @@ class InstallModelInstall extends InstallAbstractModel
 
         if ($errors = $sql_loader->getErrors()) {
             foreach ($errors as $error) {
-                $this->setError($this->translator->trans('SQL error on query <i>%error%</i>', array('%error%' => $error['error']), 'Install'));
+                $this->setError($this->translator->trans('SQL error on query <i>%query%</i>', array('%query%' => $error['error']), 'Install'));
             }
             return false;
         }
@@ -598,9 +593,6 @@ class InstallModelInstall extends InstallAbstractModel
         // Set default rewriting settings
         Configuration::updateGlobalValue('PS_REWRITING_SETTINGS', $data['rewrite_engine']);
 
-        // Activate rijndael 128 encrypt algorihtm if mcrypt is activated
-        Configuration::updateGlobalValue('PS_CIPHER_ALGORITHM', function_exists('mcrypt_encrypt') ? 1 : 0);
-
         $groups = Group::getGroups((int)Configuration::get('PS_LANG_DEFAULT'));
         $groups_default = Db::getInstance()->executeS('SELECT `name` FROM '._DB_PREFIX_.'configuration WHERE `name` LIKE "PS_%_GROUP" ORDER BY `id_configuration`');
         foreach ($groups_default as &$group_default) {
@@ -665,7 +657,7 @@ class InstallModelInstall extends InstallAbstractModel
             $employee->firstname = Tools::ucfirst($data['admin_firstname']);
             $employee->lastname = Tools::ucfirst($data['admin_lastname']);
             $employee->email = $data['admin_email'];
-            $employee->passwd = md5(_COOKIE_KEY_.$data['admin_password']);
+            $employee->setWsPasswd($data['admin_password']);
             $employee->last_passwd_gen = date('Y-m-d h:i:s', strtotime('-360 minutes'));
             $employee->bo_theme = 'default';
             $employee->default_tab = 1;
@@ -910,27 +902,6 @@ class InstallModelInstall extends InstallAbstractModel
         $fixtures_name = 'fashion';
         $zip_file = _PS_ROOT_DIR_.'/download/fixtures.zip';
         $temp_dir = _PS_ROOT_DIR_.'/download/fixtures/';
-
-        // try to download fixtures if no low memory mode
-        if ($entity === null) {
-            if (Tools::copy('http://api.prestashop.com/fixtures/'.$data['shop_country'].'/'.$data['shop_activity'].'/fixtures.zip', $zip_file)) {
-                Tools::deleteDirectory($temp_dir, true);
-                if (Tools::ZipTest($zip_file)) {
-                    if (Tools::ZipExtract($zip_file, $temp_dir)) {
-                        $files = scandir($temp_dir);
-                        if (count($files)) {
-                            foreach ($files as $file) {
-                                if (!preg_match('/^\./', $file) && is_dir($temp_dir.$file.'/')) {
-                                    $fixtures_path = $temp_dir.$file.'/';
-                                    $fixtures_name = $file;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
 
         // Load class (use fixture class if one exists, or use InstallXmlLoader)
         if (file_exists($fixtures_path.'/install.php')) {

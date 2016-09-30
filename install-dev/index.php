@@ -24,8 +24,14 @@
  * International Registered Trademark & Property of PrestaShop SA
  */
 
+
+if (!extension_loaded('SimpleXML') || PHP_VERSION_ID < 50400) {
+    require_once dirname(__FILE__).'/missing_extension.php';
+    exit();
+}
+
 require_once(dirname(__FILE__).DIRECTORY_SEPARATOR.'init.php');
-require_once(__DIR__).DIRECTORY_SEPARATOR.'autoload.php'; 
+require_once(__DIR__).DIRECTORY_SEPARATOR.'autoload.php';
 
 try {
     require_once(_PS_INSTALL_PATH_.'classes'.DIRECTORY_SEPARATOR.'controllerHttp.php');
